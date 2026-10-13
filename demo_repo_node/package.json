@@ -1,0 +1,9 @@
+{
+  "name": "cart-service",
+  "version": "1.0.0",
+  "description": "E-Commerce Cart Microservice for CI-Doctor Polyglot Demo",
+  "main": "src/cart.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

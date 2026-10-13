@@ -1,0 +1,21 @@
+{
+  "name": "ci-doctor-server",
+  "version": "2.0.0",
+  "description": "Universal Autonomous CI/CD Self-Healing AI Swarm Backend (MERN Stack)",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.1.1",
+    "cors": "^2.8.5",
+    "diff": "^5.2.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.1",
+    "socket.io": "^4.7.5",
+    "uuid": "^9.0.1"
+  }
+}
