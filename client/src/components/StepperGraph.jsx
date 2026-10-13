@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function StepperGraph({ activeStage = 'IDLE', ecosystem = 'Python 3.13' }) {
+export default function StepperGraph({ activeStage = 'IDLE', ecosystem = 'Polyglot' }) {
   // Map internal agent states to stages 1..5
   const getStageState = (stageNum) => {
     if (activeStage === 'RESOLVED' || activeStage === 'COMPLETED') {

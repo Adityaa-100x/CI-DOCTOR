@@ -129,15 +129,27 @@ export default function RepoSelector({ onSelectRepo, selectedRepo, onRunLiveRepo
             </div>
           </div>
 
-          <button
-            type="button"
-            className="brutal-action-btn"
-            onClick={() => onRunLiveRepo(selectedRepo)}
-            disabled={isRunning}
-            title="Analyze repository AST, synthesize test suites, fix bugs with Groq, and open real PR"
-          >
-            <span>{isRunning ? 'SWARM ENGAGED...' : '⚡ HEAL LIVE REPO'}</span>
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+            <button
+              type="button"
+              className="brutal-action-btn"
+              onClick={() => onRunLiveRepo(selectedRepo, 'heal')}
+              disabled={isRunning}
+              title="Execute sandbox tests, analyze failures with Groq AI LPU, verify fixes, and open live PR"
+            >
+              <span>{isRunning ? 'SWARM ENGAGED...' : '⚡ RUN AUTONOMOUS HEALER'}</span>
+            </button>
+
+            <button
+              type="button"
+              className="brutal-action-btn secondary"
+              onClick={() => onRunLiveRepo(selectedRepo, 'qa')}
+              disabled={isRunning}
+              title="Synthesize high-coverage unit tests with Groq AI, execute in sandbox, and commit test suite"
+            >
+              <span>{isRunning ? 'SWARM ENGAGED...' : '🧪 SYNTHESIZE QA TEST SUITE'}</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

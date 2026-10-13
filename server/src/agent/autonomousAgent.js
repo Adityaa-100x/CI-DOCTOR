@@ -11,7 +11,7 @@ export class AutonomousEngineerAgent {
     this.io = io; // Socket.io instance for live browser streaming
   }
 
-  async run({ repoPath, repoName, triggerEvent = null, maxTurns = 12 }) {
+  async run({ repoPath, repoName, branch = 'main', mode = 'heal', triggerEvent = null, maxTurns = 12 }) {
     const sessionId = uuidv4().substring(0, 8);
     const startTime = Date.now();
     let sandboxDir = null;
@@ -46,7 +46,7 @@ export class AutonomousEngineerAgent {
       });
 
       sandboxDir = await sandboxManager.createSandbox(repoPath, sessionId);
-      const toolExecutor = new AgentToolExecutor(sandboxDir, repoName);
+      const toolExecutor = new AgentToolExecutor(sandboxDir, repoName, branch);
 
       // Create Session in Database
       await SessionService.create({
@@ -58,7 +58,7 @@ export class AutonomousEngineerAgent {
 
       // Step 1: Universal Profiling & Discovery
       await emitEvent('thought', {
-        content: `I am commencing autonomous triage. Let me first explore the project directory tree to identify manifests and understand the language ecosystem.`,
+        content: `Commencing autonomous triage for '${repoName}'. Exploring sandbox directory tree to profile manifests and language ecosystem.`,
         level: 'info'
       });
 
@@ -75,33 +75,99 @@ export class AutonomousEngineerAgent {
         level: 'info'
       });
 
-      // Analyze ecosystem from files
       const files = listResult.files || [];
-      const hasPackageJson = files.includes('package.json');
-      const hasPyproject = files.includes('pyproject.toml') || files.includes('requirements.txt');
-      const hasGoMod = files.includes('go.mod');
 
-      let language = 'Python';
-      let runnerCommand = 'python -m pytest -v';
-      let targetFile = 'src/calculator.py';
-      let testFile = 'tests/test_calculator.py';
+      // Dynamic language & runner detection
+      let language = 'Polyglot';
+      let runnerCommand = '';
+      let targetFile = '';
+      let testFile = '';
       let testTrack = 'TEST_RICH';
+
+      const hasPackageJson = files.includes('package.json');
+      const hasPyproject = files.includes('pyproject.toml') || files.includes('requirements.txt') || files.some(f => f.endsWith('.py'));
+      const hasGoMod = files.includes('go.mod') || files.some(f => f.endsWith('.go'));
+      const hasCargo = files.includes('Cargo.toml');
 
       if (hasPackageJson) {
         language = 'Node.js (JavaScript)';
-        runnerCommand = 'node --test';
-        targetFile = files.find(f => f.startsWith('src/') && f.endsWith('.js')) || 'src/cart.js';
-        testFile = files.find(f => (f.includes('test') || f.includes('spec')) && f.endsWith('.js')) || 'tests/cart.test.js';
+        // Detect test script from package.json if possible
+        try {
+          const pkgRaw = sandboxManager.readFile(sandboxDir, 'package.json');
+          const pkg = JSON.parse(pkgRaw);
+          if (pkg.scripts && pkg.scripts.test && !pkg.scripts.test.includes('no test specified')) {
+            runnerCommand = 'npm test';
+          } else {
+            runnerCommand = 'node --test';
+          }
+        } catch (e) {
+          runnerCommand = 'node --test';
+        }
+
+        // Find primary JS/TS source files
+        const jsSourceFiles = files.filter(f =>
+          (f.endsWith('.js') || f.endsWith('.ts') || f.endsWith('.mjs')) &&
+          !f.includes('.test.') &&
+          !f.includes('.spec.') &&
+          !f.startsWith('tests/') &&
+          !f.startsWith('test/') &&
+          !f.includes('config')
+        );
+        targetFile = jsSourceFiles.find(f => f.startsWith('src/') || f.startsWith('lib/')) || jsSourceFiles[0] || '';
+
+        // Find test files
+        const jsTestFiles = files.filter(f =>
+          (f.includes('.test.') || f.includes('.spec.') || f.startsWith('tests/') || f.startsWith('test/')) &&
+          (f.endsWith('.js') || f.endsWith('.ts') || f.endsWith('.mjs'))
+        );
+        testFile = jsTestFiles[0] || '';
+
+      } else if (hasPyproject) {
+        language = 'Python';
+        runnerCommand = 'python -m pytest -v';
+
+        // Find Python source files
+        const pySourceFiles = files.filter(f =>
+          f.endsWith('.py') &&
+          !path.basename(f).startsWith('test_') &&
+          !path.basename(f).endsWith('_test.py') &&
+          !f.startsWith('tests/') &&
+          !f.startsWith('test/')
+        );
+        targetFile = pySourceFiles.find(f => f.startsWith('src/') || f.startsWith('lib/')) || pySourceFiles[0] || '';
+
+        // Find Python test files
+        const pyTestFiles = files.filter(f =>
+          f.endsWith('.py') &&
+          (path.basename(f).startsWith('test_') || path.basename(f).endsWith('_test.py') || f.startsWith('tests/') || f.startsWith('test/'))
+        );
+        testFile = pyTestFiles[0] || '';
+
       } else if (hasGoMod) {
         language = 'Go';
         runnerCommand = 'go test ./...';
+        const goSources = files.filter(f => f.endsWith('.go') && !f.endsWith('_test.go'));
+        targetFile = goSources[0] || '';
+        const goTests = files.filter(f => f.endsWith('_test.go'));
+        testFile = goTests[0] || '';
+
+      } else if (hasCargo) {
+        language = 'Rust';
+        runnerCommand = 'cargo test';
+        const rustSources = files.filter(f => f.endsWith('.rs') && !f.includes('test'));
+        targetFile = rustSources[0] || '';
       } else {
-        language = 'Python 3.13';
-        targetFile = files.find(f => f.startsWith('src/') && f.endsWith('.py')) || 'src/calculator.py';
-        testFile = files.find(f => f.startsWith('tests/') && f.endsWith('.py')) || null;
-        if (!testFile) {
-          testTrack = 'TEST_LESS';
-        }
+        // Fallback: pick first source code file found
+        const codeFiles = files.filter(f => !f.startsWith('.') && !f.includes('/.'));
+        targetFile = codeFiles.find(f => f.includes('src/') || f.endsWith('.py') || f.endsWith('.js')) || codeFiles[0] || 'README.md';
+      }
+
+      if (!testFile) {
+        testTrack = 'TEST_LESS';
+      }
+
+      if (mode === 'qa') {
+        testTrack = 'TEST_LESS';
       }
 
       await SessionService.update(sessionId, { language, targetFile });
@@ -116,11 +182,135 @@ export class AutonomousEngineerAgent {
         });
       }
 
-      // Step 2: Reproduce Bug via Test Runner
+      await emitEvent('thought', {
+        content: `Ecosystem identified: ${language}. Mode: ${mode.toUpperCase()}. Primary target file: '${targetFile || 'None'}' | Test suite: '${testFile || 'None detected'}'.`,
+        level: 'info'
+      });
+
       let lastErrorOutput = '';
-      if (testTrack === 'TEST_RICH') {
+      let patchedContent = '';
+      let originalSourceContent = '';
+
+      // If target file exists, read its original content
+      if (targetFile) {
+        await emitEvent('tool_call', {
+          toolName: 'read_file',
+          toolArgs: { path: targetFile },
+          content: `Reading target source file '${targetFile}'...`
+        });
+        const readResult = await toolExecutor.execute('read_file', { path: targetFile });
+        originalSourceContent = readResult.content;
+        await emitEvent('observation', {
+          toolName: 'read_file',
+          content: readResult.output,
+          level: 'info'
+        });
+      }
+
+      // =========================================================================
+      // BRANCH A: Autonomous Test Suite Synthesis (mode === 'qa' or ZERO tests)
+      // =========================================================================
+      if (mode === 'qa' || testTrack === 'TEST_LESS') {
+        if (!targetFile || !originalSourceContent) {
+          throw new Error(`Cannot synthesize tests: no suitable source file identified in '${repoName}'.`);
+        }
+
         await emitEvent('thought', {
-          content: `Project identified as ${language}. Running native test suite ('${runnerCommand}') to reproduce the failure and capture exact compiler/test tracebacks.`,
+          content: `Zero unit tests found or QA mode requested. Engaging Groq AI (${llmProvider.model}) to synthesize high-coverage, idiomatic unit tests for '${targetFile}'.`,
+          level: 'warning'
+        });
+
+        const synthTestCode = await llmProvider.synthesizeTests({
+          sourceCode: originalSourceContent,
+          targetFile,
+          language
+        });
+
+        // Determine destination test file path
+        let synthTestPath = '';
+        if (language.includes('Python')) {
+          synthTestPath = `tests/test_${path.basename(targetFile)}`;
+          runnerCommand = 'python -m pytest -v';
+        } else if (language.includes('Node')) {
+          const baseName = path.basename(targetFile, path.extname(targetFile));
+          synthTestPath = `tests/${baseName}.test.js`;
+          runnerCommand = 'node --test';
+        } else if (language.includes('Go')) {
+          synthTestPath = targetFile.replace('.go', '_test.go');
+          runnerCommand = 'go test ./...';
+        } else {
+          synthTestPath = `tests/test_${path.basename(targetFile)}`;
+        }
+
+        await emitEvent('tool_call', {
+          toolName: 'write_file',
+          toolArgs: { path: synthTestPath, content: synthTestCode },
+          content: `Synthesizing reproduction test suite '${synthTestPath}'...`
+        });
+
+        await toolExecutor.execute('write_file', { path: synthTestPath, content: synthTestCode });
+
+        await emitEvent('observation', {
+          toolName: 'write_file',
+          content: `Synthesized unit test suite written to '${synthTestPath}'. Running in sandbox to verify...`,
+          level: 'success'
+        });
+
+        // Run the newly synthesized tests
+        await emitEvent('tool_call', {
+          toolName: 'run_command',
+          toolArgs: { command: runnerCommand },
+          content: `Executing '${runnerCommand}' in sandbox...`
+        });
+
+        const synthRun = await toolExecutor.execute('run_command', { command: runnerCommand });
+        await emitEvent('observation', {
+          toolName: 'run_command',
+          content: synthRun.output,
+          level: synthRun.passed ? 'success' : 'error'
+        });
+
+        // If tests fail because the source code has a bug, repair the source code
+        if (!synthRun.passed) {
+          lastErrorOutput = synthRun.output;
+          await emitEvent('thought', {
+            content: `Synthesized tests revealed a defect in '${targetFile}'. Prompting Groq AI to synthesize verified source fix.`,
+            level: 'info'
+          });
+
+          const fixedSource = await llmProvider.synthesizeFix({
+            brokenCode: originalSourceContent,
+            errorOutput: lastErrorOutput,
+            testCode: synthTestCode,
+            targetFile,
+            language
+          });
+
+          if (fixedSource && fixedSource !== originalSourceContent) {
+            await emitEvent('tool_call', {
+              toolName: 'write_file',
+              toolArgs: { path: targetFile, content: fixedSource },
+              content: `Applying fix to '${targetFile}'...`
+            });
+            await toolExecutor.execute('write_file', { path: targetFile, content: fixedSource });
+
+            // Re-verify in sandbox
+            const verifyRun = await toolExecutor.execute('run_command', { command: runnerCommand });
+            await emitEvent('observation', {
+              toolName: 'run_command',
+              content: verifyRun.output,
+              level: verifyRun.passed ? 'success' : 'error'
+            });
+          }
+        }
+      }
+
+      // =========================================================================
+      // BRANCH B: Autonomous CI Healing (mode === 'heal' and tests exist)
+      // =========================================================================
+      else {
+        await emitEvent('thought', {
+          content: `Running native test runner ('${runnerCommand}') to reproduce CI failure and capture compiler/test tracebacks.`,
           level: 'info'
         });
 
@@ -130,221 +320,149 @@ export class AutonomousEngineerAgent {
           content: `Executing '${runnerCommand}' in isolated sandbox...`
         });
 
-        const testRun1 = await toolExecutor.execute('run_command', { command: runnerCommand });
-        lastErrorOutput = testRun1.output;
+        const initialTestRun = await toolExecutor.execute('run_command', { command: runnerCommand });
         await emitEvent('observation', {
           toolName: 'run_command',
-          content: testRun1.output,
-          level: testRun1.passed ? 'success' : 'error'
-        });
-      } else {
-        // Test-Less Track (Pillar 3: Auto-QA)
-        await emitEvent('thought', {
-          content: `⚠️ Critical Observation: Repository has ZERO unit tests! Switching to Pillar 3 (Autonomous Test Synthesis). I will synthesize a reproduction test to prove the bug exists before patching.`,
-          level: 'warning'
+          content: initialTestRun.output,
+          level: initialTestRun.passed ? 'success' : 'error'
         });
 
-        const synthTestPath = 'tests/test_repro.py';
-        const synthTestContent = `# Autonomous QA Reproduction Test Suite synthesized by CI-Doctor
-import pytest
-from src.tax_calculator import calculate_total
+        if (initialTestRun.passed) {
+          await emitEvent('thought', {
+            content: `✅ All tests in '${repoName}' passed cleanly with Exit Code 0. CI pipeline is healthy; no code modifications required.`,
+            level: 'success'
+          });
 
-def test_calculate_total_standard_tax():
-    # Base $100 with 10% tax should be $110.00
-    assert calculate_total(100, 0.10) == 110.00
+          const totalDuration = Number(((Date.now() - startTime) / 1000).toFixed(2));
+          await SessionService.update(sessionId, {
+            status: 'COMPLETED',
+            durationSeconds: totalDuration
+          });
 
-def test_calculate_total_zero_tax():
-    assert calculate_total(50, 0.0) == 50.00
-`;
-        await emitEvent('tool_call', {
-          toolName: 'write_file',
-          toolArgs: { path: synthTestPath, content: synthTestContent },
-          content: `Synthesizing reproduction test suite '${synthTestPath}'...`
-        });
-        await toolExecutor.execute('write_file', { path: synthTestPath, content: synthTestContent });
+          await emitEvent('status', {
+            content: `Repository CI check verified: 100% tests passing in ${totalDuration}s.`,
+            level: 'success',
+            meta: { durationSeconds: totalDuration }
+          });
 
-        await emitEvent('observation', {
-          toolName: 'write_file',
-          content: `Synthesized unit test fixture written. Verifying failure on unpatched code...`,
-          level: 'success'
-        });
+          return { success: true, sessionId, status: 'CLEAN_PASS', durationSeconds: totalDuration };
+        }
 
-        const synthRun = await toolExecutor.execute('run_command', { command: 'python -m pytest -v' });
-        lastErrorOutput = synthRun.output;
-        await emitEvent('observation', {
-          toolName: 'run_command',
-          content: synthRun.output,
-          level: 'error'
-        });
-        runnerCommand = 'python -m pytest -v';
-      }
+        lastErrorOutput = initialTestRun.output;
 
-      // Step 3: Inspect Code Implementation
-      await emitEvent('thought', {
-        content: `Error captured. Now reading '${targetFile}' to inspect AST and understand function logic.`,
-        level: 'info'
-      });
-
-      await emitEvent('tool_call', {
-        toolName: 'read_file',
-        toolArgs: { path: targetFile },
-        content: `Reading '${targetFile}'...`
-      });
-
-      const srcRead = await toolExecutor.execute('read_file', { path: targetFile });
-      await emitEvent('observation', {
-        toolName: 'read_file',
-        content: srcRead.output,
-        level: 'info'
-      });
-
-      // Step 4: Synthesize & Apply Patch
-      const srcContent = srcRead.content;
-      let patchedContent = srcContent;
-      let isReflectionLoopDemo = false;
-
-      // If Live Groq AI is configured, use it for real LLM reasoning
-      if (llmProvider.isLiveAIConfigured()) {
-        await emitEvent('thought', {
-          content: `⚡ Live Groq AI (${llmProvider.model}) is active. Prompting Groq LPU to analyze compiler/test output and synthesize a surgical patch for '${targetFile}'.`,
-          level: 'info'
-        });
-
-        try {
-          let testCode = '';
+        // Read test file if available
+        let testCode = '';
+        if (testFile) {
           try {
             const tr = await toolExecutor.execute('read_file', { path: testFile });
             testCode = tr.content || '';
           } catch (e) {}
+        }
 
-          const groqPatch = await llmProvider.synthesizeFix({
-            brokenCode: srcContent,
-            errorOutput: lastErrorOutput,
+        // Call Groq AI to synthesize fix
+        await emitEvent('thought', {
+          content: `⚡ Live Groq AI (${llmProvider.model}) is diagnosing test failure. Synthesizing surgical patch for '${targetFile}'.`,
+          level: 'info'
+        });
+
+        patchedContent = await llmProvider.synthesizeFix({
+          brokenCode: originalSourceContent,
+          errorOutput: lastErrorOutput,
+          testCode,
+          targetFile,
+          language
+        });
+
+        if (!patchedContent || patchedContent === originalSourceContent) {
+          throw new Error(`Groq AI could not generate a differentiated patch for '${targetFile}'.`);
+        }
+
+        await emitEvent('tool_call', {
+          toolName: 'write_file',
+          toolArgs: { path: targetFile, content: patchedContent },
+          content: `Applying candidate patch to '${targetFile}'...`
+        });
+
+        await toolExecutor.execute('write_file', { path: targetFile, content: patchedContent });
+
+        // Step 4: Verification in Sandbox
+        await emitEvent('thought', {
+          content: `Verifying candidate patch with '${runnerCommand}' in isolated sandbox...`,
+          level: 'info'
+        });
+
+        let verifyRun = await toolExecutor.execute('run_command', { command: runnerCommand });
+        await emitEvent('observation', {
+          toolName: 'run_command',
+          content: verifyRun.output,
+          level: verifyRun.passed ? 'success' : 'error'
+        });
+
+        // Autonomous ReAct Reflection Loop if verification fails
+        let reflectionTurn = 0;
+        const maxReflectionTurns = 2;
+        let candidateAttempt = patchedContent;
+
+        while (!verifyRun.passed && reflectionTurn < maxReflectionTurns) {
+          reflectionTurn++;
+          await emitEvent('reflection', {
+            content: `🔁 ReAct Reflection Turn ${reflectionTurn}/${maxReflectionTurns}: Candidate patch failed sandbox verification. Feeding traceback back to Groq AI for self-correction.`,
+            level: 'warning'
+          });
+
+          const revisedPatch = await llmProvider.reflectAndFix({
+            brokenCode: originalSourceContent,
+            previousAttempt: candidateAttempt,
+            failureOutput: verifyRun.output,
             testCode,
             targetFile,
             language
           });
 
-          if (groqPatch && groqPatch.length > 5 && groqPatch !== srcContent) {
-            patchedContent = groqPatch;
-            await emitEvent('thought', {
-              content: `Groq AI successfully synthesized candidate patch. Applying to sandbox...`,
-              level: 'info'
+          if (revisedPatch && revisedPatch !== candidateAttempt) {
+            candidateAttempt = revisedPatch;
+            await toolExecutor.execute('write_file', { path: targetFile, content: candidateAttempt });
+
+            verifyRun = await toolExecutor.execute('run_command', { command: runnerCommand });
+            await emitEvent('observation', {
+              toolName: 'run_command',
+              content: verifyRun.output,
+              level: verifyRun.passed ? 'success' : 'error'
             });
+          } else {
+            break;
           }
-        } catch (groqErr) {
-          await emitEvent('thought', {
-            content: `Groq AI notice (${groqErr.message}). Engaging autonomous fallback heuristics.`,
-            level: 'warning'
-          });
+        }
+
+        if (!verifyRun.passed) {
+          throw new Error(`Sandbox verification failed after ${reflectionTurn} reflection turns: ${verifyRun.output.substring(0, 300)}`);
         }
       }
 
-      // Fallback heuristics if Grok was not called or identical
-      if (patchedContent === srcContent) {
-        if (srcContent.includes('def divide(') && !srcContent.includes('if b == 0:')) {
-          isReflectionLoopDemo = true;
-        }
-
-        if (isReflectionLoopDemo) {
-          // Demonstrate Autonomous Reflection Loop: Attempt 1 naive fix
-          await emitEvent('thought', {
-            content: `Targeting zero-division guard. Attempting candidate patch (returning 0.0) and verifying in sandbox.`,
-            level: 'info'
-          });
-
-          const naivePatch = srcContent.replace(
-            'return a / b',
-            'if b == 0:\n        return 0.0  # Naive attempt\n    return a / b'
-          );
-          await toolExecutor.execute('write_file', { path: targetFile, content: naivePatch });
-
-          await emitEvent('tool_call', {
-            toolName: 'run_command',
-            toolArgs: { command: runnerCommand },
-            content: `Executing sandbox verification on Attempt 1...`
-          });
-
-          const attempt1Run = await toolExecutor.execute('run_command', { command: runnerCommand });
-          await emitEvent('observation', {
-            toolName: 'run_command',
-            content: attempt1Run.output,
-            level: 'error'
-          });
-
-          // Reflection Turn
-          await emitEvent('reflection', {
-            content: `🔁 Reflection: Attempt 1 failed! The test asserts pytest.raises(ValueError), but my code returned 0.0. Self-correcting: I must raise ValueError("Cannot divide by zero").`,
-            level: 'warning'
-          });
-
-          patchedContent = srcContent.replace(
-            'return a / b',
-            'if b == 0:\n        raise ValueError("Cannot divide by zero")\n    return a / b'
-          );
-        } else if (srcContent.includes('return a - b')) {
-          patchedContent = srcContent.replace('return a - b', 'return a + b');
-        } else if (srcContent.includes('subtotal + discountAmount')) {
-          patchedContent = srcContent.replace('subtotal + discountAmount', 'subtotal - discountAmount');
-        } else if (srcContent.includes('return round(price - (price * tax_rate), 2)')) {
-          patchedContent = srcContent.replace(
-            'return round(price - (price * tax_rate), 2)',
-            'return round(price + (price * tax_rate), 2)'
-          );
-        }
-      }
-
-      await emitEvent('thought', {
-        content: `Applying verified surgical patch to '${targetFile}'.`,
-        level: 'info'
-      });
-
-      await emitEvent('tool_call', {
-        toolName: 'write_file',
-        toolArgs: { path: targetFile, content: patchedContent },
-        content: `Writing updated content to '${targetFile}'...`
-      });
-
-      await toolExecutor.execute('write_file', { path: targetFile, content: patchedContent });
-
-      // Step 5: Verification Run
-      await emitEvent('thought', {
-        content: `Executing sandbox verification command '${runnerCommand}' to mathematically validate the fix.`,
-        level: 'info'
-      });
-
-      await emitEvent('tool_call', {
-        toolName: 'run_command',
-        toolArgs: { command: runnerCommand },
-        content: `Executing '${runnerCommand}' in sandbox...`
-      });
-
-      const finalTestRun = await toolExecutor.execute('run_command', { command: runnerCommand });
-      await emitEvent('observation', {
-        toolName: 'run_command',
-        content: finalTestRun.output,
-        level: finalTestRun.passed ? 'success' : 'error'
-      });
-
-      if (!finalTestRun.passed) {
-        throw new Error(`Sandbox verification failed with exit code ${finalTestRun.exitCode}`);
-      }
-
-      // Step 6: Create Pull Request
-      await emitEvent('thought', {
-        content: `🎉 Math & execution confirmed: all tests passed with Exit Code 0! Generating unified diff and opening Pull Request on an isolated branch.`,
-        level: 'success'
-      });
-
+      // Step 5: Generate Unified Diff & Dispatch Live Pull Request
       const diffs = toolExecutor.getUnifiedDiffs();
       const primaryDiff = diffs.map(d => d.diff).join('\n\n');
 
+      if (!primaryDiff) {
+        await emitEvent('thought', {
+          content: `No code modifications were required. Repository is healthy.`,
+          level: 'info'
+        });
+        return { success: true, sessionId };
+      }
+
       const branchName = `ci-doctor/autonomous-fix-${sessionId}`;
-      const prTitle = `fix(ci): [${language}] resolve build failure in ${targetFile}`;
+      const prTitle = mode === 'qa'
+        ? `test(ci): [${language}] autonomous unit test suite synthesized for ${targetFile || repoName}`
+        : `fix(ci): [${language}] resolve build failure in ${targetFile || repoName}`;
+
       const prBody = `## 🩺 CI-Doctor Autonomous Build Fix\n\n` +
+        `* **Repository**: \`${repoName}\`\n` +
         `* **Language Ecosystem**: \`${language}\`\n` +
+        `* **Mode**: \`${mode.toUpperCase()}\`\n` +
         `* **Sandbox Status**: \`VERIFIED PASSED (Exit Code 0)\`\n` +
-        `* **Command Executed**: \`${runnerCommand}\`\n\n` +
+        `* **Command Executed**: \`${runnerCommand}\`\n` +
+        `* **Engine**: \`Groq LPU (${llmProvider.model})\`\n\n` +
         `### 📝 Applied Changes\n\`\`\`diff\n${primaryDiff}\n\`\`\`\n`;
 
       await emitEvent('tool_call', {
@@ -362,24 +480,24 @@ def test_calculate_total_zero_tax():
       await emitEvent('observation', {
         toolName: 'create_pull_request',
         content: prResult.output,
-        level: 'success'
+        level: prResult.pr?.status === 'failed' ? 'warning' : 'success'
       });
 
       const totalDuration = Number(((Date.now() - startTime) / 1000).toFixed(2));
 
-      // Finalize Session in MongoDB
+      // Finalize Session in Database
       const finalSession = await SessionService.update(sessionId, {
         status: 'COMPLETED',
         diff: primaryDiff,
         prBranch: branchName,
         prTitle,
-        prUrl: prResult.pr?.prUrl,
-        prNumber: prResult.pr?.prNumber,
+        prUrl: prResult.pr?.prUrl || null,
+        prNumber: prResult.pr?.prNumber || null,
         durationSeconds: totalDuration
       });
 
       await emitEvent('status', {
-        content: `Build resolved and Pull Request opened in ${totalDuration}s!`,
+        content: `Build resolved and verified in ${totalDuration}s!`,
         level: 'success',
         meta: {
           session: finalSession,

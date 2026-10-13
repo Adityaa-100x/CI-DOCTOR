@@ -107,6 +107,31 @@ CRITICAL RULE: Return ONLY the raw source code for '${targetFile}'. No backticks
     return this.stripCodeFences(rawResponse);
   }
 
+  /**
+   * Autonomous QA: Synthesize high-coverage unit tests for source code
+   */
+  async synthesizeTests({ sourceCode, targetFile, language, importsHint = '' }) {
+    const prompt = `You are CI-Doctor, an elite autonomous QA and test engineer.
+You are inspecting the following source code in '${targetFile}' (${language}):
+
+================ SOURCE CODE ====================
+${sourceCode}
+================================================
+
+Task:
+1. Synthesize a comprehensive, high-coverage, executable unit test suite for '${targetFile}'.
+2. If language is Python: use pytest or unittest. Import functions/classes appropriately from '${targetFile.replace(/\\/g, '/')}'.
+3. If language is Node.js/JavaScript: use standard node:test, assert, or Jest syntax.
+4. Cover standard behavior, edge cases, zero-division or null inputs, and boundary checks.
+5. CRITICAL RULE: Return ONLY the exact runnable test code. Do not include markdown code block backticks or conversational explanations.`;
+
+    const rawResponse = await this.callGroq({
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    return this.stripCodeFences(rawResponse);
+  }
+
   stripCodeFences(code) {
     if (!code) return '';
     let cleaned = code.trim();

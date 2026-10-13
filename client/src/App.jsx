@@ -3,7 +3,6 @@ import { io } from 'socket.io-client';
 
 import Header from './components/Header';
 import RepoSelector from './components/RepoSelector';
-import ScenarioBar from './components/ScenarioBar';
 import StepperGraph from './components/StepperGraph';
 import AgentMindStream from './components/AgentMindStream';
 import DiffInspector from './components/DiffInspector';
@@ -12,11 +11,10 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [logs, setLogs] = useState([]);
   const [status, setStatus] = useState('STANDBY');
-  const [ecosystem, setEcosystem] = useState('Python 3.13');
-  const [targetArtifact, setTargetArtifact] = useState('src/calculator.py');
+  const [ecosystem, setEcosystem] = useState('Polyglot');
+  const [targetArtifact, setTargetArtifact] = useState('');
   const [diff, setDiff] = useState('');
   const [pr, setPr] = useState(null);
-  const [activeScenario, setActiveScenario] = useState('python_logic');
   const [isRunning, setIsRunning] = useState(false);
   const [currentRunId, setCurrentRunId] = useState('94827163');
   const [selectedRepo, setSelectedRepo] = useState(null);
@@ -101,7 +99,7 @@ export default function App() {
   };
 
   // Launch Autonomous Agent on the developer's live selected repository
-  const handleRunLiveRepo = async (repo) => {
+  const handleRunLiveRepo = async (repo, mode = 'heal') => {
     if (!repo) return;
     resetState();
     setIsRunning(true);
@@ -117,7 +115,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           repoFullName: repo.fullName,
-          branch: repo.defaultBranch
+          branch: repo.defaultBranch,
+          mode
         })
       });
       if (!response.ok) {
@@ -126,35 +125,6 @@ export default function App() {
       }
     } catch (err) {
       console.error('Run Live Repo Error:', err);
-      setStatus('FAILED');
-      setIsRunning(false);
-    }
-  };
-
-  // Run a benchmark test scenario targeted directly against the chosen repo
-  const handleSelectScenario = async (scenarioId) => {
-    resetState();
-    setActiveScenario(scenarioId);
-    setIsRunning(true);
-    setStatus('ANALYZING');
-
-    const newRunId = Math.floor(Math.random() * 89999999 + 10000000).toString();
-    setCurrentRunId(newRunId);
-
-    try {
-      const response = await fetch('/api/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          scenario: scenarioId,
-          targetRepo: selectedRepo ? selectedRepo.fullName : null
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`Simulation trigger failed (${response.status})`);
-      }
-    } catch (err) {
-      console.error('Simulation error:', err);
       setStatus('FAILED');
       setIsRunning(false);
     }
@@ -175,7 +145,7 @@ export default function App() {
         />
 
         <div className="sidebar-scroll-body">
-          {/* Developer Project / Repository Selector */}
+          {/* Developer Project / Repository Selector & Live Action Station */}
           <RepoSelector
             selectedRepo={selectedRepo}
             onSelectRepo={setSelectedRepo}
@@ -183,15 +153,7 @@ export default function App() {
             isRunning={isRunning}
           />
 
-          {/* Benchmark Scenarios */}
-          <ScenarioBar
-            activeScenario={activeScenario}
-            onSelectScenario={handleSelectScenario}
-            isRunning={isRunning}
-            selectedRepoName={selectedRepo?.name}
-          />
-
-          {/* 5-Stage Animated Ladder */}
+          {/* 5-Stage Animated Pipeline Ladder */}
           <StepperGraph
             activeStage={status}
             ecosystem={ecosystem}
@@ -215,7 +177,7 @@ export default function App() {
           <AgentMindStream logs={logs} />
           <DiffInspector
             diff={diff}
-            targetFile={targetArtifact}
+            targetFile={targetArtifact || (selectedRepo ? `${selectedRepo.name}/...` : 'Workspace Artifact')}
             pr={pr}
             isVerified={status === 'RESOLVED'}
           />

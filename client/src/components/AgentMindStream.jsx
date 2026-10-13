@@ -66,7 +66,7 @@ export default function AgentMindStream({ logs = [] }) {
             <div className="log-entry system">
               <span className="log-time">00:00:00</span>
               <span className="log-tag tag-system">READY</span>
-              <span className="log-msg">Agent standby. Click any scenario button above to trigger autonomous self-healing.</span>
+              <span className="log-msg">Agent standby. Select a repository on the left and engage the autonomous CI healer or QA test suite synthesizer.</span>
             </div>
           ) : (
             filteredLogs.map((log, index) => {

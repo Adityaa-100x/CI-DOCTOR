@@ -37,9 +37,9 @@ export default function Header({ isConnected, currentRunId, health }) {
         <div 
           className="status-pill" 
           style={{ background: isGitHubLive ? 'var(--brutal-purple)' : '#ffffff', color: isGitHubLive ? '#ffffff' : '#000000' }} 
-          title={isGitHubLive ? `Live GitHub Repo: ${health?.target_repo}` : 'Offline Simulation Mode'}
+          title={isGitHubLive ? 'Live GitHub Token Active' : 'GitHub Token Not Configured in .env'}
         >
-          <span className="status-text">{isGitHubLive ? 'GH: LIVE PR' : 'GH: SIMULATION'}</span>
+          <span className="status-text">{isGitHubLive ? 'GH: CONNECTED' : 'GH: NO TOKEN'}</span>
         </div>
         <div className="run-stamp">
           <span className="stamp-label">RUN</span>

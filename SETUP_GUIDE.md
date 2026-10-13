@@ -67,25 +67,20 @@ node run.js
 Open your browser to:
 👉 **[http://localhost:5000/](http://localhost:5000/)**
 
-Click any scenario button on the left sidebar (`[01] Python Logic`, `[02] ReAct Loop`, `[03] Node.js Cart`, `[04] Zero-Tests QA`) to trigger the autonomous self-healing agent!
+1. Enter your GitHub username in the **DEV** box on the sidebar and click **LOAD**.
+2. Select your repository from the dropdown.
+3. Click either:
+   - **`⚡ RUN AUTONOMOUS HEALER`**: Clones your repository into an isolated sandbox, reproduces test failures, prompts Groq AI (`llama-3.3-70b-versatile`) to synthesize fixes, validates in sandbox, and dispatches a live GitHub Pull Request.
+   - **`🧪 SYNTHESIZE QA TEST SUITE`**: Employs Groq AI to generate idiomatic unit tests for your codebase, executes in sandbox, and opens a verified PR.
 
 ---
 
-## ⚙️ (Optional) Environment Configuration
+## ⚙️ Environment Configuration
 
-If your teammate wants to connect real GitHub repositories or live Google Gemini AI:
-
-1. Copy `.env.example` into `server/.env`:
-   ```bash
-   cp .env.example server/.env
-   ```
-2. Open `server/.env` and supply:
-   - `GITHUB_TOKEN`: Classic GitHub PAT with `repo` and `workflow` scopes.
-   - `GITHUB_REPO`: `owner/repo-name`
-   - `GEMINI_API_KEY`: Free key from [Google AI Studio](https://aistudio.google.com/).
-   - `MONGODB_URI`: (Optional) `mongodb://localhost:27017/ci-doctor`
-
-> If no keys are provided, CI-Doctor automatically runs in **100% Reliable Viva Mode** with deterministic heuristics and simulated pull requests.
+Set up your `.env` file in the project root:
+- `GROQ_API_KEY`: Free key from [Groq Console](https://console.groq.com/keys) powering ultra-fast LPU inference (`llama-3.3-70b-versatile`).
+- `GITHUB_TOKEN`: Classic GitHub PAT with `repo` and `workflow` scopes to clone developer repositories and create live Pull Requests.
+- `MONGODB_URI`: (Optional) `mongodb://localhost:27017/ci-doctor` for persistent telemetry (in-memory persistence runs by default).
 
 ---
 

@@ -1096,6 +1096,14 @@ body {
   box-shadow: var(--shadow-active);
 }
 
+.brutal-action-btn.secondary {
+  background: var(--brutal-yellow);
+}
+
+.brutal-action-btn.secondary:hover:not(:disabled) {
+  background: #fde047;
+}
+
 .brutal-action-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;

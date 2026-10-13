@@ -97,24 +97,20 @@ TechExpo/
 │   │   │   └── connection.js      # Resilient MongoDB / In-Memory Persistence Layer
 │   │   └── server.js              # Express REST APIs & Socket.io WebSocket Hub
 │   └── package.json
-├── client/                      # MERN Frontend (React 18, Vite, Custom CSS)
+├── client/                      # MERN Frontend (React 18, Vite, Neo-Brutalist CSS)
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Header.jsx         # Global Header with Live Connection Badges
-│   │   │   ├── ScenarioBar.jsx    # 1-Click Polyglot Scenario Launcher
-│   │   │   ├── PipelineRibbon.jsx # MTTR Latency, Ecosystem Pill, Track Badge
+│   │   │   ├── RepoSelector.jsx   # Live GitHub Username & Dynamic Repo Station
 │   │   │   ├── StepperGraph.jsx   # 5-Stage Animated Pipeline Stepper
 │   │   │   ├── AgentMindStream.jsx# Real-Time ReAct Terminal (Thoughts & Tool Calls)
 │   │   │   └── DiffInspector.jsx  # Syntax-Highlighted Unified Diff & PR Card
 │   │   ├── App.jsx                # Main Application State & Socket.io Controller
-│   │   ├── index.css              # Custom Luxury Dark Theme Design System
+│   │   ├── index.css              # Neo-Brutalist Design System
 │   │   └── main.jsx
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
-├── demo_repo/                   # Target Python Codebase (Logic Bug & Reflection Loop)
-├── demo_repo_node/              # Target Node.js Codebase (E-commerce Cart Logic Bug)
-├── demo_repo_testless/          # Target Zero-Test Codebase (Auto-QA Synthesis)
 ├── run.js                       # Unified Server Runner
 └── start_presentation.bat       # Windows 1-Click Presenter Launcher
 ```
@@ -131,4 +127,4 @@ node run.js
 # http://localhost:5000/
 ```
 
-Click any demo scenario button in the top toolbar to watch the autonomous agent explore the workspace, execute tests, synthesize patches, and generate verified Pull Requests!
+Load your GitHub username, select your project repository from the dropdown, and click **`⚡ RUN AUTONOMOUS HEALER`** or **`🧪 SYNTHESIZE QA TEST SUITE`**! Watch CI-Doctor explore your codebase, execute tests in sandbox, synthesize surgical patches with Groq AI (`llama-3.3-70b-versatile`), and open verified Pull Requests on GitHub.

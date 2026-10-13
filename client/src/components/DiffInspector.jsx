@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 export default function DiffInspector({
   diff = '',
-  targetFile = 'src/calculator.py',
+  targetFile = 'Workspace Artifact',
   pr = null,
   isVerified = false
 }) {
@@ -21,7 +21,7 @@ export default function DiffInspector({
     if (!rawDiff) {
       return (
         <span className="diff-placeholder">
-          // Ready for execution. Trigger a scenario to view surgical unified diffs.
+          // Ready for execution. Select a repository and run CI-Doctor to view unified diffs.
         </span>
       );
     }

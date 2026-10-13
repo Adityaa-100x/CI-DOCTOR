@@ -202,26 +202,22 @@ export class GitHubService {
       } catch (err) {
         console.error('[GitHubService] Live GitHub API Error:', err.message);
         return {
-          status: 'error_fallback',
-          mode: 'live_github_failed',
+          status: 'failed',
+          mode: 'live_github',
           error: err.message,
-          prNumber: Math.floor(Math.random() * 800) + 100,
-          prUrl: `https://github.com/${targetRepo}/pulls`,
           branchName,
           targetRepo,
           title,
-          body: `Failed to dispatch live PR: ${err.message}`
+          body
         };
       }
     }
 
-    // Fallback if no credentials provided
-    const mockNumber = Math.floor(Math.random() * 800) + 100;
+    // If no credentials provided
     return {
-      status: 'mock_created',
-      mode: 'offline_simulation',
-      prNumber: mockNumber,
-      prUrl: `https://github.com/${targetRepo}/pull/${mockNumber}`,
+      status: 'failed',
+      mode: 'live_github',
+      error: 'GITHUB_TOKEN is not configured in environment. Cannot dispatch Pull Request to GitHub.',
       branchName,
       targetRepo,
       title,
