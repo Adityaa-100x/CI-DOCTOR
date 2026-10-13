@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 
 import Header from './components/Header';
+import RepoSelector from './components/RepoSelector';
 import ScenarioBar from './components/ScenarioBar';
 import StepperGraph from './components/StepperGraph';
 import AgentMindStream from './components/AgentMindStream';
@@ -18,8 +19,23 @@ export default function App() {
   const [activeScenario, setActiveScenario] = useState('python_logic');
   const [isRunning, setIsRunning] = useState(false);
   const [currentRunId, setCurrentRunId] = useState('94827163');
+  const [selectedRepo, setSelectedRepo] = useState(null);
+  const [health, setHealth] = useState({
+    groq_configured: false,
+    github_configured: false,
+    target_repo: null
+  });
+
+  const fetchHealth = () => {
+    fetch('/api/health')
+      .then(res => res.json())
+      .then(data => setHealth(data))
+      .catch(() => {});
+  };
 
   useEffect(() => {
+    fetchHealth();
+
     // Connect Socket.io client to Express server
     const socket = io();
 
@@ -84,6 +100,38 @@ export default function App() {
     setStatus('STANDBY');
   };
 
+  // Launch Autonomous Agent on the developer's live selected repository
+  const handleRunLiveRepo = async (repo) => {
+    if (!repo) return;
+    resetState();
+    setIsRunning(true);
+    setStatus('ANALYZING');
+    setEcosystem(repo.language || 'Polyglot');
+
+    const newRunId = Math.floor(Math.random() * 89999999 + 10000000).toString();
+    setCurrentRunId(newRunId);
+
+    try {
+      const response = await fetch('/api/github/analyze-user-repo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoFullName: repo.fullName,
+          branch: repo.defaultBranch
+        })
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || `Server responded with ${response.status}`);
+      }
+    } catch (err) {
+      console.error('Run Live Repo Error:', err);
+      setStatus('FAILED');
+      setIsRunning(false);
+    }
+  };
+
+  // Run a benchmark test scenario targeted directly against the chosen repo
   const handleSelectScenario = async (scenarioId) => {
     resetState();
     setActiveScenario(scenarioId);
@@ -97,7 +145,10 @@ export default function App() {
       const response = await fetch('/api/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario: scenarioId })
+        body: JSON.stringify({
+          scenario: scenarioId,
+          targetRepo: selectedRepo ? selectedRepo.fullName : null
+        })
       });
       if (!response.ok) {
         throw new Error(`Simulation trigger failed (${response.status})`);
@@ -120,15 +171,27 @@ export default function App() {
         <Header
           isConnected={isConnected}
           currentRunId={currentRunId}
+          health={health}
         />
 
         <div className="sidebar-scroll-body">
+          {/* Developer Project / Repository Selector */}
+          <RepoSelector
+            selectedRepo={selectedRepo}
+            onSelectRepo={setSelectedRepo}
+            onRunLiveRepo={handleRunLiveRepo}
+            isRunning={isRunning}
+          />
+
+          {/* Benchmark Scenarios */}
           <ScenarioBar
             activeScenario={activeScenario}
             onSelectScenario={handleSelectScenario}
             isRunning={isRunning}
+            selectedRepoName={selectedRepo?.name}
           />
 
+          {/* 5-Stage Animated Ladder */}
           <StepperGraph
             activeStage={status}
             ecosystem={ecosystem}

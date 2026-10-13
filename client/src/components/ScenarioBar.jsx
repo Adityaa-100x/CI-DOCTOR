@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ScenarioBar({ activeScenario, onSelectScenario, isRunning }) {
+export default function ScenarioBar({ activeScenario, onSelectScenario, isRunning, selectedRepoName }) {
   const scenarios = [
     {
       id: 'python_logic',
@@ -34,8 +34,13 @@ export default function ScenarioBar({ activeScenario, onSelectScenario, isRunnin
 
   return (
     <div className="sidebar-section">
-      <div className="sidebar-section-header">
-        <span className="sidebar-section-tag">SCENARIOS</span>
+      <div className="sidebar-section-header" style={{ justifyContent: 'space-between' }}>
+        <span className="sidebar-section-tag">BENCHMARK SCENARIOS</span>
+        {selectedRepoName && (
+          <span style={{ fontSize: '0.62rem', fontFamily: 'var(--font-mono)', fontWeight: '800', background: 'var(--brutal-yellow)', padding: '1px 5px', border: '1px solid #000' }}>
+            PR ➔ {selectedRepoName}
+          </span>
+        )}
       </div>
       <div className="sidebar-scenario-list">
         {scenarios.map(sc => (

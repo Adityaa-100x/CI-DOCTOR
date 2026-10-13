@@ -1,6 +1,9 @@
 import React from 'react';
 
-export default function Header({ isConnected, currentRunId }) {
+export default function Header({ isConnected, currentRunId, health }) {
+  const isGroqActive = Boolean(health?.groq_configured);
+  const isGitHubLive = Boolean(health?.github_configured);
+
   return (
     <div className="sidebar-brand-block">
       <div className="header-brand">
@@ -12,16 +15,33 @@ export default function Header({ isConnected, currentRunId }) {
         </div>
         <div className="brand-meta">
           <div className="brand-title">
-            CI-DOCTOR <span className="brand-tag">MERN</span>
+            CI-DOCTOR <span className="brand-tag">GROQ</span>
           </div>
           <div className="brand-sub">Autonomous Self-Healing CI/CD</div>
         </div>
       </div>
 
       <div className="sidebar-meta-row">
-        <div className={`status-pill ${isConnected ? 'online' : 'offline'}`}>
+        <div className={`status-pill ${isConnected ? 'online' : 'offline'}`} title="WebSocket Bus Status">
           <span className="status-blink-dot"></span>
           <span className="status-text">{isConnected ? 'LIVE' : 'OFFLINE'}</span>
+        </div>
+        <div 
+          className="status-pill" 
+          style={{ background: isGroqActive ? 'var(--brutal-cyan)' : 'var(--brutal-yellow)', color: '#000000' }} 
+          title={isGroqActive ? `Groq LPU Active (${health?.groq_model || 'llama-3.3-70b-versatile'})` : 'Groq API Key not set yet (Get one at console.groq.com)'}
+        >
+          <span className="status-text">{isGroqActive ? 'GROQ: ACTIVE' : 'GROQ: STANDBY'}</span>
+        </div>
+      </div>
+
+      <div className="sidebar-meta-row" style={{ marginTop: '6px' }}>
+        <div 
+          className="status-pill" 
+          style={{ background: isGitHubLive ? 'var(--brutal-purple)' : '#ffffff', color: isGitHubLive ? '#ffffff' : '#000000' }} 
+          title={isGitHubLive ? `Live GitHub Repo: ${health?.target_repo}` : 'Offline Simulation Mode'}
+        >
+          <span className="status-text">{isGitHubLive ? 'GH: LIVE PR' : 'GH: SIMULATION'}</span>
         </div>
         <div className="run-stamp">
           <span className="stamp-label">RUN</span>

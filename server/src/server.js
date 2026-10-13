@@ -12,12 +12,18 @@ import { SessionService } from './models/Session.js';
 import { AgentLogService } from './models/AgentLog.js';
 import { AutonomousEngineerAgent } from './agent/autonomousAgent.js';
 import { githubService } from './github/githubService.js';
-
-dotenv.config();
+import { llmProvider } from './agent/llm.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../');
+
+// Load environment variables from server/.env or project root .env
+dotenv.config();
+if (fs.existsSync(path.join(PROJECT_ROOT, '.env'))) {
+  dotenv.config({ path: path.join(PROJECT_ROOT, '.env'), override: true });
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -44,14 +50,15 @@ io.on('connection', (socket) => {
   });
 });
 
-// REST Endpoints
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     version: '2.0.0 (MERN)',
     database: isDbConnected() ? 'mongodb_connected' : 'in_memory_persistence',
     github_configured: githubService.isConfigured(),
-    gemini_configured: Boolean(process.env.GEMINI_API_KEY)
+    groq_configured: llmProvider.isLiveAIConfigured(),
+    groq_model: llmProvider.model,
+    target_repo: process.env.GITHUB_REPO || null
   });
 });
 
@@ -99,7 +106,7 @@ app.get('/api/scenarios', (req, res) => {
 app.post('/api/simulate', async (req, res) => {
   const scenario = req.body?.scenario || 'python_logic';
   let targetRepoPath = path.join(PROJECT_ROOT, 'demo_repo');
-  let repoName = 'enterprise-team/ci-doctor-demo';
+  let repoName = req.body?.targetRepo || process.env.GITHUB_REPO || 'enterprise-team/ci-doctor-demo';
 
   if (scenario === 'python_logic') {
     targetRepoPath = path.join(PROJECT_ROOT, 'demo_repo');
@@ -199,6 +206,57 @@ app.post('/api/analyze-repo', async (req, res) => {
     repoPath,
     repoName
   });
+});
+
+// Developer Repository Discovery & Activation Endpoints
+app.get('/api/github/user', async (req, res) => {
+  try {
+    const user = await githubService.getAuthenticatedUser();
+    res.json({ user, configured: githubService.isConfigured() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/github/repos', async (req, res) => {
+  try {
+    const username = req.query.username || '';
+    const repos = await githubService.listUserRepositories(username);
+    res.json({ repos });
+  } catch (err) {
+    res.status(500).json({ error: err.message, repos: [] });
+  }
+});
+
+app.post('/api/github/analyze-user-repo', async (req, res) => {
+  const { repoFullName, branch } = req.body;
+  if (!repoFullName) {
+    return res.status(400).json({ error: 'repoFullName is required (e.g. username/repo)' });
+  }
+
+  const sessionId = uuidv4().substring(0, 8);
+  const tempCloneDir = path.join(PROJECT_ROOT, '.sandbox_clones', `${repoFullName.replace('/', '_')}_${sessionId}`);
+  fs.mkdirSync(path.dirname(tempCloneDir), { recursive: true });
+
+  try {
+    await githubService.cloneRepository(repoFullName, tempCloneDir, branch);
+
+    setTimeout(() => {
+      agent.run({
+        repoPath: tempCloneDir,
+        repoName: repoFullName
+      }).catch(err => console.error('[Agent Error on Developer Repo]', err));
+    }, 100);
+
+    res.json({
+      status: 'agent_started',
+      repoFullName,
+      message: `Autonomous CI-Doctor swarm activated on '${repoFullName}'. Pull Request will be dispatched upon resolution.`
+    });
+  } catch (err) {
+    console.error('[Clone Error]', err);
+    res.status(500).json({ error: `Could not clone repository '${repoFullName}': ${err.message}` });
+  }
 });
 
 app.post('/api/webhook', async (req, res) => {

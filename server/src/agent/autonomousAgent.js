@@ -117,6 +117,7 @@ export class AutonomousEngineerAgent {
       }
 
       // Step 2: Reproduce Bug via Test Runner
+      let lastErrorOutput = '';
       if (testTrack === 'TEST_RICH') {
         await emitEvent('thought', {
           content: `Project identified as ${language}. Running native test suite ('${runnerCommand}') to reproduce the failure and capture exact compiler/test tracebacks.`,
@@ -130,6 +131,7 @@ export class AutonomousEngineerAgent {
         });
 
         const testRun1 = await toolExecutor.execute('run_command', { command: runnerCommand });
+        lastErrorOutput = testRun1.output;
         await emitEvent('observation', {
           toolName: 'run_command',
           content: testRun1.output,
@@ -168,6 +170,7 @@ def test_calculate_total_zero_tax():
         });
 
         const synthRun = await toolExecutor.execute('run_command', { command: 'python -m pytest -v' });
+        lastErrorOutput = synthRun.output;
         await emitEvent('observation', {
           toolName: 'run_command',
           content: synthRun.output,
@@ -200,55 +203,95 @@ def test_calculate_total_zero_tax():
       let patchedContent = srcContent;
       let isReflectionLoopDemo = false;
 
-      if (srcContent.includes('def divide(') && !srcContent.includes('if b == 0:')) {
-        isReflectionLoopDemo = true;
-      }
-
-      if (isReflectionLoopDemo) {
-        // Demonstrate Autonomous Reflection Loop: Attempt 1 naive fix
+      // If Live Groq AI is configured, use it for real LLM reasoning
+      if (llmProvider.isLiveAIConfigured()) {
         await emitEvent('thought', {
-          content: `Targeting zero-division guard. Attempting candidate patch (returning 0.0) and verifying in sandbox.`,
+          content: `⚡ Live Groq AI (${llmProvider.model}) is active. Prompting Groq LPU to analyze compiler/test output and synthesize a surgical patch for '${targetFile}'.`,
           level: 'info'
         });
 
-        const naivePatch = srcContent.replace(
-          'return a / b',
-          'if b == 0:\n        return 0.0  # Naive attempt\n    return a / b'
-        );
-        await toolExecutor.execute('write_file', { path: targetFile, content: naivePatch });
+        try {
+          let testCode = '';
+          try {
+            const tr = await toolExecutor.execute('read_file', { path: testFile });
+            testCode = tr.content || '';
+          } catch (e) {}
 
-        await emitEvent('tool_call', {
-          toolName: 'run_command',
-          toolArgs: { command: runnerCommand },
-          content: `Executing sandbox verification on Attempt 1...`
-        });
+          const groqPatch = await llmProvider.synthesizeFix({
+            brokenCode: srcContent,
+            errorOutput: lastErrorOutput,
+            testCode,
+            targetFile,
+            language
+          });
 
-        const attempt1Run = await toolExecutor.execute('run_command', { command: runnerCommand });
-        await emitEvent('observation', {
-          toolName: 'run_command',
-          content: attempt1Run.output,
-          level: 'error'
-        });
+          if (groqPatch && groqPatch.length > 5 && groqPatch !== srcContent) {
+            patchedContent = groqPatch;
+            await emitEvent('thought', {
+              content: `Groq AI successfully synthesized candidate patch. Applying to sandbox...`,
+              level: 'info'
+            });
+          }
+        } catch (groqErr) {
+          await emitEvent('thought', {
+            content: `Groq AI notice (${groqErr.message}). Engaging autonomous fallback heuristics.`,
+            level: 'warning'
+          });
+        }
+      }
 
-        // Reflection Turn
-        await emitEvent('reflection', {
-          content: `🔁 Reflection: Attempt 1 failed! The test asserts pytest.raises(ValueError), but my code returned 0.0. Self-correcting: I must raise ValueError("Cannot divide by zero").`,
-          level: 'warning'
-        });
+      // Fallback heuristics if Grok was not called or identical
+      if (patchedContent === srcContent) {
+        if (srcContent.includes('def divide(') && !srcContent.includes('if b == 0:')) {
+          isReflectionLoopDemo = true;
+        }
 
-        patchedContent = srcContent.replace(
-          'return a / b',
-          'if b == 0:\n        raise ValueError("Cannot divide by zero")\n    return a / b'
-        );
-      } else if (srcContent.includes('return a - b')) {
-        patchedContent = srcContent.replace('return a - b', 'return a + b');
-      } else if (srcContent.includes('subtotal + discountAmount')) {
-        patchedContent = srcContent.replace('subtotal + discountAmount', 'subtotal - discountAmount');
-      } else if (srcContent.includes('return round(price - (price * tax_rate), 2)')) {
-        patchedContent = srcContent.replace(
-          'return round(price - (price * tax_rate), 2)',
-          'return round(price + (price * tax_rate), 2)'
-        );
+        if (isReflectionLoopDemo) {
+          // Demonstrate Autonomous Reflection Loop: Attempt 1 naive fix
+          await emitEvent('thought', {
+            content: `Targeting zero-division guard. Attempting candidate patch (returning 0.0) and verifying in sandbox.`,
+            level: 'info'
+          });
+
+          const naivePatch = srcContent.replace(
+            'return a / b',
+            'if b == 0:\n        return 0.0  # Naive attempt\n    return a / b'
+          );
+          await toolExecutor.execute('write_file', { path: targetFile, content: naivePatch });
+
+          await emitEvent('tool_call', {
+            toolName: 'run_command',
+            toolArgs: { command: runnerCommand },
+            content: `Executing sandbox verification on Attempt 1...`
+          });
+
+          const attempt1Run = await toolExecutor.execute('run_command', { command: runnerCommand });
+          await emitEvent('observation', {
+            toolName: 'run_command',
+            content: attempt1Run.output,
+            level: 'error'
+          });
+
+          // Reflection Turn
+          await emitEvent('reflection', {
+            content: `🔁 Reflection: Attempt 1 failed! The test asserts pytest.raises(ValueError), but my code returned 0.0. Self-correcting: I must raise ValueError("Cannot divide by zero").`,
+            level: 'warning'
+          });
+
+          patchedContent = srcContent.replace(
+            'return a / b',
+            'if b == 0:\n        raise ValueError("Cannot divide by zero")\n    return a / b'
+          );
+        } else if (srcContent.includes('return a - b')) {
+          patchedContent = srcContent.replace('return a - b', 'return a + b');
+        } else if (srcContent.includes('subtotal + discountAmount')) {
+          patchedContent = srcContent.replace('subtotal + discountAmount', 'subtotal - discountAmount');
+        } else if (srcContent.includes('return round(price - (price * tax_rate), 2)')) {
+          patchedContent = srcContent.replace(
+            'return round(price - (price * tax_rate), 2)',
+            'return round(price + (price * tax_rate), 2)'
+          );
+        }
       }
 
       await emitEvent('thought', {
