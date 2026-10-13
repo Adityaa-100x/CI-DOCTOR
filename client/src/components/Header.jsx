@@ -21,7 +21,7 @@ export default function Header({ isConnected, currentRunId, health }) {
         </div>
       </div>
 
-      <div className="sidebar-meta-row">
+      <div className="sidebar-meta-grid">
         <div className={`status-pill ${isConnected ? 'online' : 'offline'}`} title="WebSocket Bus Status">
           <span className="status-blink-dot"></span>
           <span className="status-text">{isConnected ? 'LIVE' : 'OFFLINE'}</span>
@@ -29,13 +29,11 @@ export default function Header({ isConnected, currentRunId, health }) {
         <div 
           className="status-pill" 
           style={{ background: isGroqActive ? 'var(--brutal-cyan)' : 'var(--brutal-yellow)', color: '#000000' }} 
-          title={isGroqActive ? `Groq LPU Active (${health?.groq_model || 'llama-3.3-70b-versatile'})` : 'Groq API Key not set yet (Get one at console.groq.com)'}
+          title={isGroqActive ? `Groq LPU Active (${health?.groq_model || 'llama-3.3-70b-versatile'})` : 'Groq API Key not set yet'}
         >
           <span className="status-text">{isGroqActive ? 'GROQ: ACTIVE' : 'GROQ: STANDBY'}</span>
         </div>
-      </div>
 
-      <div className="sidebar-meta-row" style={{ marginTop: '6px' }}>
         <div 
           className="status-pill" 
           style={{ background: isGitHubLive ? 'var(--brutal-purple)' : '#ffffff', color: isGitHubLive ? '#ffffff' : '#000000' }} 

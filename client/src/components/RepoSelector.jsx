@@ -17,7 +17,6 @@ export default function RepoSelector({ onSelectRepo, selectedRepo, onRunLiveRepo
           setUsername(data.user.login);
           fetchRepos(data.user.login);
         } else {
-          // Default to empty or default search
           fetchRepos('');
         }
       })
@@ -60,73 +59,84 @@ export default function RepoSelector({ onSelectRepo, selectedRepo, onRunLiveRepo
   };
 
   return (
-    <div className="sidebar-section repo-selector-section">
+    <div className="sidebar-section">
       <div className="sidebar-section-header">
-        <span className="sidebar-section-tag">PROJECT REPOSITORY</span>
+        <span className="sidebar-section-tag">PROJECT WORKSPACE</span>
+        {authUser && (
+          <span className="sidebar-header-badge">
+            @{authUser.login}
+          </span>
+        )}
       </div>
 
-      {/* GitHub Username Input Bar */}
-      <form onSubmit={handleFetchClick} className="repo-search-form">
-        <div className="repo-input-wrap">
-          <span className="repo-input-prefix">@</span>
-          <input
-            type="text"
-            className="repo-input"
-            placeholder="GitHub username..."
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            disabled={isRunning}
-          />
-        </div>
-        <button type="submit" className="repo-fetch-btn" disabled={loading || isRunning}>
+      {/* Developer Username Search Bar (Neo-Brutalist) */}
+      <form onSubmit={handleFetchClick} className="brutal-input-group">
+        <span className="brutal-input-addon">DEV</span>
+        <input
+          type="text"
+          className="brutal-input"
+          placeholder="GitHub username..."
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          disabled={isRunning}
+        />
+        <button type="submit" className="brutal-input-btn" disabled={loading || isRunning}>
           {loading ? '...' : 'LOAD'}
         </button>
       </form>
 
-      {error && <div className="repo-error-banner">{error}</div>}
+      {error && <div className="brutal-error-pill">{error}</div>}
 
-      {/* Dropdown Selector */}
-      {repos.length > 0 ? (
-        <div className="repo-dropdown-wrap">
+      {/* Repo Dropdown */}
+      {repos.length > 0 && (
+        <div className="brutal-select-wrap">
           <select
-            className="repo-select-box"
+            className="brutal-select"
             value={selectedRepo ? selectedRepo.fullName : ''}
             onChange={handleRepoChange}
             disabled={isRunning}
           >
             {repos.map(r => (
               <option key={r.fullName} value={r.fullName}>
-                {r.name} ({r.language}) {r.isPrivate ? '🔒' : ''}
+                {r.name} · {r.language} {r.isPrivate ? '(Private)' : ''}
               </option>
             ))}
           </select>
         </div>
-      ) : (
-        !loading && <div className="repo-empty-note">No repositories loaded. Enter a username above.</div>
       )}
 
-      {/* Selected Repo Details Card */}
+      {/* Selected Repo Card (Styled exactly like Scenario Buttons) */}
       {selectedRepo && (
-        <div className="selected-repo-card">
-          <div className="repo-card-header">
-            <span className="repo-card-name" title={selectedRepo.fullName}>
-              {selectedRepo.fullName}
-            </span>
-            <span className="repo-card-lang">{selectedRepo.language}</span>
+        <div className="sidebar-scenario-btn active-repo-card">
+          <div className="scenario-btn-top">
+            <span className="scenario-index">🌿 {selectedRepo.defaultBranch || 'main'}</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <span className="scenario-chip" style={{ background: 'var(--brutal-cyan)', color: '#000' }}>
+                {selectedRepo.language || 'POLYGLOT'}
+              </span>
+              <span className="scenario-chip" style={{ background: selectedRepo.isPrivate ? 'var(--brutal-purple)' : '#000', color: '#fff' }}>
+                {selectedRepo.isPrivate ? 'PRIVATE' : 'PUBLIC'}
+              </span>
+            </div>
           </div>
-          <div className="repo-card-meta">
-            <span className="repo-branch-pill">🌿 {selectedRepo.defaultBranch || 'main'}</span>
-            <span className="repo-vis-pill">{selectedRepo.isPrivate ? 'PRIVATE' : 'PUBLIC'}</span>
+
+          <div className="scenario-btn-main" style={{ marginTop: '4px', marginBottom: '8px' }}>
+            <span className="scenario-icon">🐙</span>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+              <span className="scenario-title" style={{ wordBreak: 'break-all' }}>
+                {selectedRepo.fullName}
+              </span>
+            </div>
           </div>
 
           <button
-            className="brutalist-btn btn-run-repo"
+            type="button"
+            className="brutal-action-btn"
             onClick={() => onRunLiveRepo(selectedRepo)}
             disabled={isRunning}
-            title="Clone repository into sandbox, diagnose errors with Groq AI, and open real Pull Request"
+            title="Analyze repository AST, synthesize test suites, fix bugs with Groq, and open real PR"
           >
-            <span className="btn-bolt">⚡</span>
-            <span>{isRunning ? 'AGENT ACTIVE...' : 'HEAL LIVE REPO'}</span>
+            <span>{isRunning ? 'SWARM ENGAGED...' : '⚡ HEAL LIVE REPO'}</span>
           </button>
         </div>
       )}

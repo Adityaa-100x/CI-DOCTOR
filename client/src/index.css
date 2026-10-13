@@ -153,23 +153,25 @@ body {
   color: #555555;
 }
 
-.sidebar-meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.sidebar-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .status-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 4px 6px;
   border: var(--border-med);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   box-shadow: var(--shadow-sm);
+  white-space: nowrap;
 }
 
 .status-pill.online {
@@ -192,24 +194,27 @@ body {
 .run-stamp {
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   background: var(--brutal-white);
   border: var(--border-med);
   box-shadow: var(--shadow-sm);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   overflow: hidden;
 }
 
 .stamp-label {
   background: var(--brutal-black);
   color: var(--brutal-white);
-  padding: 2px 5px;
+  padding: 3px 5px;
   font-weight: 800;
 }
 
 .stamp-val {
-  padding: 2px 6px;
+  padding: 3px 6px;
   font-weight: 800;
+  text-align: right;
+  flex: 1;
 }
 
 /* Sidebar Scrollable Body */
@@ -960,198 +965,151 @@ body {
 }
 
 /* ==========================================================================
-   DEVELOPER REPOSITORY SELECTOR (NEO-BRUTALIST STYLES)
+   DEVELOPER PROJECT WORKSPACE (NEO-BRUTALIST THEME)
    ========================================================================== */
-.repo-selector-section {
+
+.sidebar-header-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: var(--brutal-yellow);
+  color: #000;
+  padding: 1px 6px;
+  border: var(--border-thin);
+  box-shadow: 1px 1px 0px #000;
+  margin-left: auto;
+}
+
+.brutal-input-group {
+  display: flex;
   background: var(--brutal-white);
   border: var(--border-med);
-  box-shadow: var(--shadow-sm);
-  padding: 8px;
-}
-
-.repo-search-form {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.repo-input-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  background: #f8fafc;
-  border: var(--border-thin);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 2px 2px 0px #000;
   overflow: hidden;
 }
 
-.repo-input-prefix {
+.brutal-input-addon {
   background: var(--brutal-black);
-  color: var(--brutal-white);
+  color: var(--brutal-yellow);
   font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 0.75rem;
-  padding: 4px 6px;
+  font-weight: 900;
+  font-size: 0.72rem;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
 }
 
-.repo-input {
+.brutal-input {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 4px 6px;
+  padding: 5px 8px;
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--brutal-black);
   outline: none;
   min-width: 0;
 }
 
-.repo-fetch-btn {
-  background: var(--brutal-yellow);
+.brutal-input:focus {
+  background: #fffcee;
+}
+
+.brutal-input-btn {
+  background: var(--brutal-cyan);
   color: var(--brutal-black);
-  border: var(--border-thin);
-  box-shadow: var(--shadow-sm);
+  border: none;
+  border-left: var(--border-thin);
   font-family: var(--font-mono);
   font-weight: 900;
   font-size: 0.72rem;
-  padding: 4px 10px;
+  padding: 5px 10px;
   cursor: pointer;
-  transition: transform 0.1s;
+  transition: all 0.1s ease;
 }
 
-.repo-fetch-btn:hover:not(:disabled) {
-  background: var(--brutal-cyan);
-  transform: translate(-1px, -1px);
+.brutal-input-btn:hover:not(:disabled) {
+  background: var(--brutal-yellow);
 }
 
-.repo-fetch-btn:disabled {
+.brutal-input-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.repo-dropdown-wrap {
-  margin-top: 6px;
+.brutal-select-wrap {
+  position: relative;
 }
 
-.repo-select-box {
+.brutal-select {
   width: 100%;
-  padding: 6px 8px;
+  padding: 6px 10px;
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 700;
-  background: #ffffff;
-  border: var(--border-thin);
-  box-shadow: var(--shadow-sm);
+  font-weight: 800;
+  background: var(--brutal-white);
+  border: var(--border-med);
+  box-shadow: 2px 2px 0px #000;
   color: var(--brutal-black);
   cursor: pointer;
   outline: none;
 }
 
-.repo-select-box:focus {
+.brutal-select:focus {
+  background: #fffcee;
+  box-shadow: 3px 3px 0px #000;
+}
+
+.active-repo-card {
   border-color: #000;
-  background: #fefce8;
-}
-
-.selected-repo-card {
-  margin-top: 8px;
-  background: #f1f5f9;
-  border: var(--border-thin);
-  box-shadow: var(--shadow-sm);
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.repo-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 3px;
-  border-bottom: 1px dashed #cbd5e1;
-}
-
-.repo-card-name {
-  font-family: var(--font-mono);
-  font-weight: 900;
-  font-size: 0.72rem;
-  color: var(--brutal-black);
-  word-break: break-all;
-  flex: 1;
-}
-
-.repo-card-lang {
-  background: var(--brutal-cyan);
-  border: 1.5px solid #000;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 800;
-  padding: 1px 5px;
-  white-space: nowrap;
-}
-
-.repo-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-}
-
-.repo-branch-pill {
   background: #ffffff;
-  border: 1.5px solid #000;
-  padding: 1px 5px;
-  font-weight: 700;
 }
 
-.repo-vis-pill {
-  background: var(--brutal-purple);
-  color: #fff;
-  border: 1.5px solid #000;
-  padding: 1px 5px;
-  font-weight: 800;
-}
-
-.btn-run-repo {
+.brutal-action-btn {
   width: 100%;
   background: var(--brutal-green);
   color: var(--brutal-black);
-  font-size: 0.75rem;
+  border: var(--border-med);
+  box-shadow: 2px 2px 0px #000;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   font-weight: 900;
-  padding: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 4px;
+  transition: all 0.1s ease;
+  letter-spacing: 0.02em;
 }
 
-.btn-run-repo:hover:not(:disabled) {
+.brutal-action-btn:hover:not(:disabled) {
   background: #00e570;
   transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px #000;
 }
 
-.repo-empty-note {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: #64748b;
-  margin-top: 6px;
-  text-align: center;
+.brutal-action-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: var(--shadow-active);
 }
 
-.repo-error-banner {
+.brutal-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.brutal-error-pill {
   background: #fee2e2;
-  border: 1.5px solid var(--brutal-red);
+  border: var(--border-thin);
   color: #991b1b;
   font-family: var(--font-mono);
   font-size: 0.65rem;
-  padding: 4px 6px;
-  margin-top: 4px;
-  font-weight: 700;
+  font-weight: 800;
+  padding: 3px 6px;
+  box-shadow: 1px 1px 0px #000;
 }
 
 /* ==========================================================================
