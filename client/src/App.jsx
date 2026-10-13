@@ -34,6 +34,38 @@ export default function App() {
   useEffect(() => {
     fetchHealth();
 
+    // Auto-restore most recent audit session if available
+    fetch('/api/sessions')
+      .then(res => res.json())
+      .then(sessions => {
+        if (sessions && sessions.length > 0) {
+          const latest = sessions[0];
+          fetch(`/api/sessions/${latest.sessionId}`)
+            .then(r => r.json())
+            .then(data => {
+              if (data.logs && data.logs.length > 0) {
+                setLogs(data.logs);
+              }
+              if (data.session) {
+                if (data.session.diff) setDiff(data.session.diff);
+                if (data.session.prUrl) {
+                  setPr({
+                    prUrl: data.session.prUrl,
+                    prNumber: data.session.prNumber,
+                    title: data.session.prTitle,
+                    branchName: data.session.prBranch
+                  });
+                }
+                if (data.session.status === 'COMPLETED') setStatus('RESOLVED');
+                if (data.session.language) setEcosystem(data.session.language);
+                if (data.session.targetFile) setTargetArtifact(data.session.targetFile);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+
     // Connect Socket.io client to Express server
     const socket = io();
 
@@ -99,7 +131,7 @@ export default function App() {
   };
 
   // Launch Autonomous Agent on the developer's live selected repository
-  const handleRunLiveRepo = async (repo, mode = 'heal') => {
+  const handleRunLiveRepo = async (repo, mode = 'analyze') => {
     if (!repo) return;
     resetState();
     setIsRunning(true);

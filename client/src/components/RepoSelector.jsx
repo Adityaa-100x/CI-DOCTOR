@@ -133,11 +133,11 @@ export default function RepoSelector({ onSelectRepo, selectedRepo, onRunLiveRepo
             <button
               type="button"
               className="brutal-action-btn"
-              onClick={() => onRunLiveRepo(selectedRepo, 'heal')}
+              onClick={() => onRunLiveRepo(selectedRepo, 'analyze')}
               disabled={isRunning}
-              title="Execute sandbox tests, analyze failures with Groq AI LPU, verify fixes, and open live PR"
+              title="Analyze repository code files, find logic & runtime bugs with Groq AI, fix them, and raise a live PR"
             >
-              <span>{isRunning ? 'SWARM ENGAGED...' : '⚡ RUN AUTONOMOUS HEALER'}</span>
+              <span>{isRunning ? 'SWARM ENGAGED...' : '🔍 ANALYZE CODE & AUTO-FIX PR'}</span>
             </button>
 
             <button

@@ -66,7 +66,7 @@ export default function AgentMindStream({ logs = [] }) {
             <div className="log-entry system">
               <span className="log-time">00:00:00</span>
               <span className="log-tag tag-system">READY</span>
-              <span className="log-msg">Agent standby. Select a repository on the left and engage the autonomous CI healer or QA test suite synthesizer.</span>
+              <span className="log-msg">Agent standby. Select a repository on the left to analyze code files, detect logic & runtime bugs, and raise an autonomous Pull Request.</span>
             </div>
           ) : (
             filteredLogs.map((log, index) => {
