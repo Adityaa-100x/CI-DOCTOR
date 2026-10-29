@@ -2,13 +2,53 @@ import { sandboxManager } from '../sandbox/sandboxManager.js';
 import { githubService } from '../github/githubService.js';
 
 export class AgentToolExecutor {
-  constructor(sandboxDir, repoName, baseBranch = 'main') {
+  constructor(sandboxDir, repoName, baseBranch = 'main', mode = 'analyze') {
     this.sandboxDir = sandboxDir;
     this.repoName = repoName;
     this.baseBranch = baseBranch;
+    this.mode = mode; // 'analyze' | 'heal' | 'qa'
     this.appliedChanges = new Map(); // path -> newContent
     this.originalContents = new Map(); // path -> origContent
   }
+
+  isSensitiveFile(filePath) {
+    const lower = filePath.toLowerCase().replace(/\\/g, '/');
+    return (
+      lower.includes('.env') ||
+      lower.includes('.git/') ||
+      lower.includes('.github/workflows') ||
+      lower.includes('.ssh/') ||
+      lower.endsWith('.pem') ||
+      lower.endsWith('.key') ||
+      lower.includes('id_rsa') ||
+      lower.includes('secret')
+    );
+  }
+
+  isTestFile(filePath) {
+    const lower = filePath.toLowerCase().replace(/\\/g, '/');
+    return (
+      lower.includes('.test.') ||
+      lower.includes('.spec.') ||
+      lower.includes('/tests/') ||
+      lower.includes('/test/') ||
+      lower.startsWith('tests/') ||
+      lower.startsWith('test/') ||
+      filePath.startsWith('test_') ||
+      lower.endsWith('_test.py') ||
+      lower.endsWith('_test.go')
+    );
+  }
+
+  redactSecrets(text) {
+    if (!text || typeof text !== 'string') return text;
+    return text
+      .replace(/gsk_[a-zA-Z0-9_-]{20,}/g, 'gsk_***[REDACTED_API_KEY]***')
+      .replace(/ghp_[a-zA-Z0-9]{20,}/g, 'ghp_***[REDACTED_GH_TOKEN]***')
+      .replace(/gho_[a-zA-Z0-9]{20,}/g, 'gho_***[REDACTED_GH_OAUTH]***')
+      .replace(/mongodb(?:\+srv)?:\/\/[^\s]+/g, 'mongodb://***[REDACTED_DB_URI]***');
+  }
+
 
   async execute(toolName, args = {}) {
     switch (toolName) {
@@ -74,6 +114,25 @@ export class AgentToolExecutor {
         const filePath = args.path;
         const content = args.content;
         if (!filePath || content === undefined) throw new Error("Arguments 'path' and 'content' are required for write_file");
+
+        // Gate 0: Sensitive File Shield
+        if (this.isSensitiveFile(filePath)) {
+          throw new Error(`[SECURITY GATE REJECTED]: Modifying sensitive, credential, or CI workflow file '${filePath}' is strictly prohibited.`);
+        }
+
+        // Gate 1: Immutable Test Suite Benchmark
+        // In repair/audit mode, existing test files are strictly read-only so the AI cannot "cheat" by weakening assertions.
+        if (this.mode !== 'qa' && this.isTestFile(filePath)) {
+          try {
+            const existing = sandboxManager.readFile(this.sandboxDir, filePath);
+            if (existing) {
+              throw new Error(`[GATE 1 REJECTED: IMMUTABLE TEST SUITE]: Altering existing test assertion file '${filePath}' is blocked. Tests are immutable ground truth.`);
+            }
+          } catch (e) {
+            if (e.message.includes('GATE 1 REJECTED')) throw e;
+            // File didn't exist, writing a new file is allowed
+          }
+        }
         
         // Save original if not already recorded
         if (!this.originalContents.has(filePath)) {
@@ -91,7 +150,7 @@ export class AgentToolExecutor {
           status: 'success',
           path: filePath,
           bytesWritten: content.length,
-          output: `Successfully updated '${filePath}' (${content.length} bytes written).`
+          output: `[GATE PASSED] Successfully updated '${filePath}' (${content.length} bytes written to isolated sandbox).`
         };
       }
 

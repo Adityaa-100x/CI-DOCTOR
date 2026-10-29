@@ -6,6 +6,9 @@ export default function StepperGraph({ activeStage = 'IDLE', ecosystem = 'Polygl
     if (activeStage === 'RESOLVED' || activeStage === 'COMPLETED') {
       return 'completed';
     }
+    if (activeStage === 'AWAITING_APPROVAL') {
+      return stageNum < 5 ? 'completed' : 'active';
+    }
     if (activeStage === 'IDLE' || activeStage === 'STANDBY') {
       return stageNum === 1 ? 'standby' : 'idle';
     }
@@ -27,6 +30,7 @@ export default function StepperGraph({ activeStage = 'IDLE', ecosystem = 'Polygl
   const getStatusClass = (st) => {
     switch (st) {
       case 'RESOLVED': return 'state-success';
+      case 'AWAITING_APPROVAL': return 'state-standby';
       case 'FAILED': return 'state-error';
       case 'STANDBY': return 'state-standby';
       default: return 'state-running';

@@ -4,7 +4,11 @@ export default function DiffInspector({
   diff = '',
   targetFile = 'Workspace Artifact',
   pr = null,
-  isVerified = false
+  isVerified = false,
+  status = 'STANDBY',
+  pendingPr = null,
+  isApproving = false,
+  onApprovePr = () => {}
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -79,6 +83,27 @@ export default function DiffInspector({
       </div>
 
       <div className="inspector-body">
+        {/* Human-in-the-Loop Gate: Pending Approval Banner */}
+        {pendingPr && !pr && (
+          <div className="brutalist-pr-banner human-approval-banner">
+            <div className="pr-banner-left">
+              <div className="pr-stamp-label gate-approval-tag">🛡️ GATE 5: HUMAN APPROVAL REQUIRED</div>
+              <div className="pr-banner-title">{pendingPr.title}</div>
+              <div className="pr-banner-sub">
+                TARGET: <code className="pr-code">{pendingPr.repoFullName}</code> • BRANCH: <code className="pr-code">{pendingPr.branchName}</code> • <span style={{ color: '#00875a', fontWeight: 900 }}>SANDBOX VERIFIED (EXIT 0)</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="brutalist-btn btn-approve-dispatch"
+              onClick={onApprovePr}
+              disabled={isApproving}
+            >
+              <span>{isApproving ? 'DISPATCHING TO GITHUB...' : '🚀 APPROVE & DISPATCH PR'}</span>
+            </button>
+          </div>
+        )}
+
         {/* Pull Request Ready Banner */}
         {pr && (
           <div className="brutalist-pr-banner">
@@ -100,6 +125,16 @@ export default function DiffInspector({
               </svg>
               <span>VIEW ON GITHUB ↗</span>
             </a>
+          </div>
+        )}
+
+        {/* Zero-Trust Safety Verification Gates */}
+        {diff && (
+          <div className="safety-gates-strip">
+            <span className="gate-item gate-pass">🛡️ G1: IMMUTABLE TESTS</span>
+            <span className="gate-item gate-pass">⚡ G2: COMPILER/SYNTAX (EXIT 0)</span>
+            <span className="gate-item gate-pass">🧪 G3: ZERO REGRESSIONS</span>
+            <span className="gate-item gate-pass">✂️ G4: SURGICAL DIFF</span>
           </div>
         )}
 

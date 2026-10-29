@@ -18,6 +18,9 @@ export default function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [currentRunId, setCurrentRunId] = useState('94827163');
   const [selectedRepo, setSelectedRepo] = useState(null);
+  const [humanInTheLoop, setHumanInTheLoop] = useState(false);
+  const [pendingPr, setPendingPr] = useState(null);
+  const [isApproving, setIsApproving] = useState(false);
   const [health, setHealth] = useState({
     groq_configured: false,
     github_configured: false,
@@ -106,7 +109,13 @@ export default function App() {
         if (data.meta.pr) {
           setPr(data.meta.pr);
         }
-        if (data.meta.durationSeconds) {
+        if (data.meta.pendingPr) {
+          setPendingPr(data.meta.pendingPr);
+        }
+        if (data.meta.status === 'AWAITING_APPROVAL') {
+          setStatus('AWAITING_APPROVAL');
+          setIsRunning(false);
+        } else if (data.meta.durationSeconds) {
           setStatus('RESOLVED');
           setIsRunning(false);
         }
@@ -127,11 +136,34 @@ export default function App() {
     setLogs([]);
     setDiff('');
     setPr(null);
+    setPendingPr(null);
     setStatus('STANDBY');
   };
 
+  const handleApprovePr = async () => {
+    if (!pendingPr) return;
+    setIsApproving(true);
+    try {
+      const response = await fetch('/api/github/dispatch-pr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pendingPr)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to dispatch PR');
+      setPr(data.pr);
+      setStatus('RESOLVED');
+      setPendingPr(null);
+    } catch (err) {
+      console.error('Approve PR Error:', err);
+      alert(`Approval Error: ${err.message}`);
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   // Launch Autonomous Agent on the developer's live selected repository
-  const handleRunLiveRepo = async (repo, mode = 'analyze') => {
+  const handleRunLiveRepo = async (repo, mode = 'analyze', targetFile = 'ALL') => {
     if (!repo) return;
     resetState();
     setIsRunning(true);
@@ -148,7 +180,9 @@ export default function App() {
         body: JSON.stringify({
           repoFullName: repo.fullName,
           branch: repo.defaultBranch,
-          mode
+          mode,
+          humanInTheLoop,
+          targetFile: targetFile !== 'ALL' ? targetFile : null
         })
       });
       if (!response.ok) {
@@ -170,11 +204,7 @@ export default function App() {
     <div className="app-shell">
       {/* Left Sidebar: Controls & Pipeline Ladder */}
       <aside className="app-sidebar">
-        <Header
-          isConnected={isConnected}
-          currentRunId={currentRunId}
-          health={health}
-        />
+        <Header />
 
         <div className="sidebar-scroll-body">
           {/* Developer Project / Repository Selector & Live Action Station */}
@@ -183,6 +213,8 @@ export default function App() {
             onSelectRepo={setSelectedRepo}
             onRunLiveRepo={handleRunLiveRepo}
             isRunning={isRunning}
+            humanInTheLoop={humanInTheLoop}
+            onToggleHumanInTheLoop={() => setHumanInTheLoop(prev => !prev)}
           />
 
           {/* 5-Stage Animated Pipeline Ladder */}
@@ -211,7 +243,11 @@ export default function App() {
             diff={diff}
             targetFile={targetArtifact || (selectedRepo ? `${selectedRepo.name}/...` : 'Workspace Artifact')}
             pr={pr}
-            isVerified={status === 'RESOLVED'}
+            status={status}
+            pendingPr={pendingPr}
+            isApproving={isApproving}
+            onApprovePr={handleApprovePr}
+            isVerified={status === 'RESOLVED' || status === 'AWAITING_APPROVAL' || Boolean(pr)}
           />
         </div>
       </main>

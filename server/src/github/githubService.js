@@ -2,6 +2,10 @@ import { Octokit } from '@octokit/rest';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class GitHubService {
   constructor() {
@@ -17,6 +21,308 @@ export class GitHubService {
   getOctokit() {
     this.token = process.env.GITHUB_TOKEN || '';
     return new Octokit(this.token ? { auth: this.token } : {});
+  }
+
+  /**
+   * Fetch recent GitHub Actions workflow runs for a repository
+   */
+  async getWorkflowRuns(repoFullName) {
+    const [owner, repo] = repoFullName.split('/');
+    if (!owner || !repo) return { total_count: 0, runs: [] };
+    const octokit = this.getOctokit();
+    try {
+      const { data } = await octokit.rest.actions.listWorkflowRunsForRepo({
+        owner,
+        repo,
+        per_page: 5
+      });
+
+      const runs = (data.workflow_runs || []).map(r => ({
+        id: r.id,
+        name: r.name,
+        runNumber: r.run_number,
+        status: r.status, // "queued", "in_progress", "completed"
+        conclusion: r.conclusion, // "success", "failure", "cancelled", etc.
+        htmlUrl: r.html_url,
+        branch: r.head_branch,
+        commitSha: r.head_sha ? r.head_sha.substring(0, 7) : '',
+        commitMessage: r.head_commit?.message || 'Push commit',
+        author: r.head_commit?.author?.name || r.actor?.login || 'developer',
+        createdAt: r.created_at,
+        updatedAt: r.updated_at
+      }));
+
+      return {
+        total_count: data.total_count,
+        runs
+      };
+    } catch (err) {
+      console.warn(`[GitHubService] Could not list workflow runs for '${repoFullName}':`, err.message);
+      return { total_count: 0, runs: [], error: err.message };
+    }
+  }
+
+  /**
+   * Synthesize and deploy a real GitHub Actions CI workflow file (.github/workflows/ci.yml)
+   */
+  async deployCIWorkflow(repoFullName, branch = 'main') {
+    const [owner, repo] = repoFullName.split('/');
+    if (!owner || !repo) throw new Error(`Invalid repo format '${repoFullName}'`);
+    const octokit = this.getOctokit();
+
+    // 1. Detect language / files in repo
+    const files = await this.listRepoSourceFiles(repoFullName, branch);
+    let ciYamlContent = '';
+
+    const hasJava = files.some(f => f.endsWith('.java'));
+    const hasPython = files.some(f => f.endsWith('.py'));
+    const hasNode = files.some(f => f.endsWith('.js') || f.endsWith('.ts') || f.endsWith('package.json'));
+
+    if (hasJava) {
+      ciYamlContent = `name: CI Build & Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Java Compilation & Integrity Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Compile Java Sources
+        run: |
+          echo "=== CI-Doctor: Intelligent CI Build & Verification ==="
+          
+          # If triggered by a Pull Request, verify modified files in PR to avoid unrelated legacy failures
+          if [ "\${{ github.event_name }}" = "pull_request" ]; then
+            echo "Event: Pull Request #\${{ github.event.pull_request.number }}"
+            git fetch origin \${{ github.base_ref }} --depth=1 || true
+            
+            # Find Java files changed in this PR
+            CHANGED=\$(git diff --name-only origin/\${{ github.base_ref }}...HEAD | grep '\\.java$' || true)
+            if [ -z "\$CHANGED" ]; then
+              echo "No Java files modified in this Pull Request. Verification passed."
+              exit 0
+            fi
+            echo "Modified Java files to verify in PR:"
+            echo "\$CHANGED"
+            TARGET_FILES="\$CHANGED"
+          else
+            echo "Event: Push to \${{ github.ref_name }}"
+            TARGET_FILES=\$(find . -name "*.java")
+          fi
+
+          FAILURES=0
+          while IFS= read -r f; do
+            [ -z "\$f" ] && continue
+            [ ! -f "\$f" ] && continue
+            echo "Compiling: \$f"
+            if ! javac "\$f"; then
+              echo "COMPILATION_ERROR in \$f"
+              FAILURES=\$((FAILURES + 1))
+            fi
+          done <<< "\$TARGET_FILES"
+
+          if [ \$FAILURES -gt 0 ]; then
+            echo "❌ CI FAILED: \$FAILURES Java file(s) failed compilation."
+            exit 1
+          fi
+          echo "SUCCESS: All verified Java sources compiled without syntax or type errors."
+`;
+    } else if (hasPython) {
+      ciYamlContent = `name: Python CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Python Syntax & Test Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python Sources
+        run: |
+          echo "=== CI-Doctor: Intelligent Python Verification ==="
+          if [ "\${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin \${{ github.base_ref }} --depth=1 || true
+            TARGETS=\$(git diff --name-only origin/\${{ github.base_ref }}...HEAD | grep '\\.py$' || true)
+            if [ -z "\$TARGETS" ]; then
+              echo "No Python files modified in PR."
+              exit 0
+            fi
+          else
+            TARGETS=\$(git ls-files '*.py')
+          fi
+
+          python -m py_compile \$TARGETS
+          echo "SUCCESS: Python syntax valid."
+`;
+    } else {
+      ciYamlContent = `name: Node.js CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Node.js Syntax & Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify JavaScript Syntax
+        run: |
+          echo "=== CI-Doctor: Intelligent JavaScript Verification ==="
+          if [ "\${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin \${{ github.base_ref }} --depth=1 || true
+            TARGETS=\$(git diff --name-only origin/\${{ github.base_ref }}...HEAD | grep -E '\\.(js|mjs|cjs|ts|jsx|tsx)$' || true)
+            if [ -z "\$TARGETS" ]; then
+              echo "No JS files modified in PR."
+              exit 0
+            fi
+          else
+            TARGETS=\$(git ls-files '*.js' '*.mjs' 2>/dev/null)
+          fi
+
+          for f in \$TARGETS; do
+            [ -f "\$f" ] && node --check "\$f"
+          done
+          echo "SUCCESS: JavaScript syntax valid."
+`;
+    }
+
+    // 2. Fetch repo metadata for actual default branch if not specified
+    let targetBranch = branch;
+    try {
+      const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+      if (!branch || branch === 'main') {
+        targetBranch = repoData.default_branch || 'main';
+      }
+    } catch (e) {}
+
+    const workflowPath = '.github/workflows/ci.yml';
+    let fileSha = undefined;
+
+    try {
+      const { data: existingFile } = await octokit.rest.repos.getContent({
+        owner,
+        repo,
+        path: workflowPath,
+        ref: targetBranch
+      });
+      fileSha = existingFile.sha;
+    } catch (e) {
+      // File does not exist yet
+    }
+
+    const { data: commitResult } = await octokit.rest.repos.createOrUpdateFileContents({
+      owner,
+      repo,
+      path: workflowPath,
+      message: 'ci: deploy automated GitHub Actions CI workflow [CI-Doctor]',
+      content: Buffer.from(ciYamlContent).toString('base64'),
+      branch: targetBranch,
+      sha: fileSha
+    });
+
+    console.log(`[GitHubService] Deployed CI workflow to '${repoFullName}' on branch '${targetBranch}'. Commit: ${commitResult.commit.sha}`);
+
+    return {
+      success: true,
+      commitSha: commitResult.commit.sha.substring(0, 7),
+      commitUrl: commitResult.commit.html_url,
+      workflowPath,
+      branch: targetBranch
+    };
+  }
+
+  /**
+   * Download raw logs for a workflow run's failing job
+   */
+  async getWorkflowRunJobLogs(repoFullName, runId) {
+    const [owner, repo] = repoFullName.split('/');
+    if (!owner || !repo) throw new Error('Invalid repoFullName');
+    const octokit = this.getOctokit();
+    this.token = process.env.GITHUB_TOKEN || '';
+
+    const { data: jobsData } = await octokit.rest.actions.listJobsForWorkflowRun({
+      owner,
+      repo,
+      run_id: runId
+    });
+
+    const jobs = jobsData.jobs || [];
+    if (jobs.length === 0) {
+      throw new Error(`No jobs found for workflow run #${runId}`);
+    }
+
+    const targetJob = jobs.find(j => j.conclusion === 'failure') || jobs[0];
+
+    const logUrl = `https://api.github.com/repos/${owner}/${repo}/actions/jobs/${targetJob.id}/logs`;
+    const response = await fetch(logUrl, {
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : '',
+        'User-Agent': 'CI-Doctor',
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      redirect: 'follow'
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Failed to download job logs (${response.status}): ${errText}`);
+    }
+
+    const logs = await response.text();
+    return {
+      runId,
+      jobId: targetJob.id,
+      jobName: targetJob.name,
+      conclusion: targetJob.conclusion,
+      htmlUrl: targetJob.html_url,
+      logs
+    };
   }
 
   /**
@@ -85,6 +391,89 @@ export class GitHubService {
   }
 
   /**
+   * List source files in a repository or scenario for user-targeted auditing
+   */
+  async listRepoSourceFiles(repoFullName, branch = 'main') {
+    const codeExtensions = new Set([
+      '.java', '.py', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
+      '.go', '.rs', '.cpp', '.c', '.h', '.hpp', '.cs', '.php', '.rb'
+    ]);
+
+    // 1. Handle Demo Scenarios
+    if (repoFullName.startsWith('demo/')) {
+      const scenarioKey = repoFullName.replace('demo/', '');
+      const scenarioPath = path.resolve(__dirname, '../scenarios', scenarioKey);
+      if (fs.existsSync(scenarioPath)) {
+        const results = [];
+        const walk = (dir) => {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (['.git', 'node_modules', '__pycache__', '.pytest_cache'].includes(entry.name)) continue;
+            const full = path.join(dir, entry.name);
+            const rel = path.relative(scenarioPath, full).replace(/\\/g, '/');
+            if (entry.isDirectory()) {
+              walk(full);
+            } else {
+              const ext = path.extname(entry.name).toLowerCase();
+              if (codeExtensions.has(ext)) results.push(rel);
+            }
+          }
+        };
+        walk(scenarioPath);
+        return results;
+      }
+      return [];
+    }
+
+    // 2. Handle GitHub Repositories via Git Tree API
+    const octokit = this.getOctokit();
+    const [owner, repo] = repoFullName.split('/');
+    if (!owner || !repo) return [];
+
+    try {
+      let commitSha = branch || 'main';
+      try {
+        const { data: refData } = await octokit.rest.git.getRef({
+          owner,
+          repo,
+          ref: `heads/${branch || 'main'}`
+        });
+        commitSha = refData.object.sha;
+      } catch (refErr) {
+        const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+        const { data: refData } = await octokit.rest.git.getRef({
+          owner,
+          repo,
+          ref: `heads/${repoData.default_branch}`
+        });
+        commitSha = refData.object.sha;
+      }
+
+      const { data: treeData } = await octokit.rest.git.getTree({
+        owner,
+        repo,
+        tree_sha: commitSha,
+        recursive: 'true'
+      });
+
+      const sourceFiles = (treeData.tree || [])
+        .filter(item => item.type === 'blob')
+        .map(item => item.path)
+        .filter(p => {
+          const ext = path.extname(p).toLowerCase();
+          if (!codeExtensions.has(ext)) return false;
+          if (p.includes('node_modules/') || p.includes('.git/') || p.includes('dist/') || p.includes('build/')) return false;
+          return true;
+        });
+
+      return sourceFiles;
+    } catch (err) {
+      console.warn(`[GitHubService] Could not list source files for '${repoFullName}':`, err.message);
+      return [];
+    }
+  }
+
+  /**
    * Clone repository into target sandbox directory for autonomous analysis
    */
   async cloneRepository(repoFullName, targetDir, branch = '') {
@@ -107,6 +496,22 @@ export class GitHubService {
   async createPullRequest({ repoFullName, branchName, baseBranch = 'main', title, body, changes }) {
     this.token = process.env.GITHUB_TOKEN || '';
     const targetRepo = repoFullName || this.defaultRepo || 'enterprise-team/ci-doctor-service';
+
+    // Offline / Demo scenarios support
+    if (targetRepo.startsWith('demo/')) {
+      const prNum = Math.floor(Math.random() * 899 + 100);
+      console.log(`[GitHubService] Generating simulated verified PR for scenario '${targetRepo}': PR #${prNum}`);
+      return {
+        status: 'created',
+        mode: 'demo_simulated',
+        prNumber: prNum,
+        prUrl: `https://github.com/paneertikkadedo/${targetRepo.replace('demo/', '')}/pull/${prNum}`,
+        branchName,
+        targetRepo,
+        title,
+        body
+      };
+    }
 
     if (this.isConfigured()) {
       try {

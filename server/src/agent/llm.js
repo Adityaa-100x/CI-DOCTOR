@@ -151,6 +151,79 @@ Task:
   }
 
   /**
+   * Autonomous CI Failure Diagnosis:
+   * Analyzes real GitHub Actions build/compiler failure logs, pinpoints the broken file and line.
+   */
+  async diagnoseCILogs({ logs, repoName, candidateFiles = [] }) {
+    // Truncate logs if too large to fit in context window, keeping the relevant tail where errors reside
+    const maxLogChars = 7500;
+    const logSnippet = logs.length > maxLogChars ? logs.substring(logs.length - maxLogChars) : logs;
+
+    const prompt = `You are CI-Doctor, an elite autonomous CI/CD failure diagnostician and compiler specialist.
+A GitHub Actions workflow run failed in repository '${repoName}'.
+Here is the real failure log output from the GitHub Actions runner:
+
+==================== REAL GITHUB ACTIONS FAILURE LOG ====================
+${logSnippet}
+========================================================================
+
+Candidate source files in the repository:
+${candidateFiles.slice(0, 40).join('\n')}
+
+Task:
+1. Pinpoint the exact source code file in the repository that caused the build or compilation error.
+2. Determine the failure category (e.g. "CompilationError", "SyntaxError", "AssertionError", "NullPointerException", "TypeMismatch").
+3. Determine the line number where the compiler or runtime error occurred.
+4. Extract the exact compiler error message snippet from the log.
+5. Provide a clear diagnosis explaining why the build failed.
+
+Format your response strictly as JSON with this schema:
+{
+  "failingFile": "path/to/failing_file.java",
+  "errorType": "CompilationError",
+  "line": 42,
+  "rawErrorSnippet": "exact compiler error line from log",
+  "explanation": "Why this failed and how it should be fixed"
+}
+
+CRITICAL RULES:
+- Respond ONLY with the raw JSON object.
+- Do NOT wrap in markdown backticks or include conversational filler.
+- If the failing file is among the candidate source files, use the matching path.`;
+
+    const rawResponse = await this.callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1
+    });
+
+    try {
+      let cleaned = rawResponse.trim();
+      if (cleaned.startsWith('```')) {
+        const firstLineEnd = cleaned.indexOf('\n');
+        if (firstLineEnd !== -1) cleaned = cleaned.substring(firstLineEnd + 1);
+        if (cleaned.endsWith('```')) cleaned = cleaned.substring(0, cleaned.length - 3);
+        cleaned = cleaned.trim();
+      }
+      return JSON.parse(cleaned);
+    } catch (e) {
+      console.warn('[LLMProvider] Failed to parse diagnoseCILogs JSON:', e.message, rawResponse);
+      const fileMatch = rawResponse.match(/"failingFile"\s*:\s*"([^"]+)"/);
+      const errorMatch = rawResponse.match(/"errorType"\s*:\s*"([^"]+)"/);
+      const lineMatch = rawResponse.match(/"line"\s*:\s*([0-9]+)/);
+      const snippetMatch = rawResponse.match(/"rawErrorSnippet"\s*:\s*"([^"]+)"/);
+      const explanationMatch = rawResponse.match(/"explanation"\s*:\s*"([^"]+)"/);
+
+      return {
+        failingFile: fileMatch ? fileMatch[1] : (candidateFiles[0] || ''),
+        errorType: errorMatch ? errorMatch[1] : 'BuildFailure',
+        line: lineMatch ? parseInt(lineMatch[1], 10) : 1,
+        rawErrorSnippet: snippetMatch ? snippetMatch[1] : 'GitHub Actions build failure',
+        explanation: explanationMatch ? explanationMatch[1] : 'CI workflow failure detected'
+      };
+    }
+  }
+
+  /**
    * Autonomous Deep Code File Audit & Repair:
    * Inspects a code file for logic bugs, runtime errors, boundary flaws, null safety, or edge cases.
    * If an issue is found, provides a diagnosis and the complete corrected source code.

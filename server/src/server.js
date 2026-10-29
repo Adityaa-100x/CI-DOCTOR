@@ -13,6 +13,7 @@ import { AgentLogService } from './models/AgentLog.js';
 import { AutonomousEngineerAgent } from './agent/autonomousAgent.js';
 import { githubService } from './github/githubService.js';
 import { llmProvider } from './agent/llm.js';
+import { sandboxManager } from './sandbox/sandboxManager.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -82,24 +83,125 @@ app.get('/api/github/repos', async (req, res) => {
   }
 });
 
+app.get('/api/github/repo-files', async (req, res) => {
+  const { repoFullName, branch } = req.query;
+  if (!repoFullName) return res.status(400).json({ error: 'repoFullName is required' });
+  try {
+    const files = await githubService.listRepoSourceFiles(repoFullName, branch);
+    res.json({ files });
+  } catch (err) {
+    res.status(500).json({ error: err.message, files: [] });
+  }
+});
+
+// Real GitHub Actions Workflow Runs
+app.get('/api/github/workflow-runs', async (req, res) => {
+  const { repoFullName } = req.query;
+  if (!repoFullName) return res.status(400).json({ error: 'repoFullName is required' });
+  try {
+    const runsData = await githubService.getWorkflowRuns(repoFullName);
+    res.json(runsData);
+  } catch (err) {
+    res.status(500).json({ error: err.message, total_count: 0, runs: [] });
+  }
+});
+
+// Deploy Real GitHub Actions CI Workflow to Developer's Repository
+app.post('/api/github/deploy-ci-workflow', async (req, res) => {
+  const { repoFullName, branch = 'main' } = req.body;
+  if (!repoFullName) return res.status(400).json({ error: 'repoFullName is required' });
+  try {
+    const result = await githubService.deployCIWorkflow(repoFullName, branch);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Autonomous Healing of a Specific Failed GitHub Actions Workflow Run
+app.post('/api/github/heal-workflow-run', async (req, res) => {
+  const { repoFullName, runId, branch = 'main', humanInTheLoop = false } = req.body;
+  if (!repoFullName || !runId) {
+    return res.status(400).json({ error: 'repoFullName and runId are required' });
+  }
+
+  const sessionId = uuidv4().substring(0, 8);
+  const tempCloneDir = path.join(PROJECT_ROOT, '.sandbox_clones', `${repoFullName.replace(/[/\\:]/g, '_')}_ci_${runId}_${sessionId}`);
+  fs.mkdirSync(path.dirname(tempCloneDir), { recursive: true });
+
+  try {
+    console.log(`[CI Ingestion] Fetching real GitHub Actions failure logs for run #${runId} on '${repoFullName}'...`);
+    const logsData = await githubService.getWorkflowRunJobLogs(repoFullName, runId);
+
+    // Clone repository at the branch
+    await githubService.cloneRepository(repoFullName, tempCloneDir, branch);
+
+    // Trigger autonomous swarm with failure logs
+    setTimeout(() => {
+      agent.run({
+        repoPath: tempCloneDir,
+        repoName: repoFullName,
+        branch,
+        mode: 'ci_heal',
+        humanInTheLoop,
+        ciRunInfo: {
+          runId,
+          jobId: logsData.jobId,
+          jobName: logsData.jobName,
+          htmlUrl: logsData.htmlUrl
+        },
+        failureLogs: logsData.logs
+      }).catch(err => console.error('[Agent CI Heal Error]', err));
+    }, 100);
+
+    res.json({
+      status: 'ci_healing_started',
+      repoFullName,
+      runId,
+      jobName: logsData.jobName,
+      message: `Autonomous CI-Doctor swarm activated on failing GitHub Actions run #${runId}. Ingesting real logs...`
+    });
+  } catch (err) {
+    console.error('[Heal Workflow Run Error]', err);
+    res.status(500).json({ error: `Could not initialize CI healing for run #${runId}: ${err.message}` });
+  }
+});
+
+app.get('/api/scenarios', (req, res) => {
+  res.json({ scenarios: [] });
+});
+
 app.post('/api/github/analyze-user-repo', async (req, res) => {
-  const { repoFullName, branch, mode = 'heal' } = req.body;
+  const { repoFullName, branch, mode = 'heal', humanInTheLoop = false, targetFile = null } = req.body;
   if (!repoFullName) {
     return res.status(400).json({ error: 'repoFullName is required (e.g. username/repo)' });
   }
 
   const sessionId = uuidv4().substring(0, 8);
-  const tempCloneDir = path.join(PROJECT_ROOT, '.sandbox_clones', `${repoFullName.replace('/', '_')}_${sessionId}`);
+  const tempCloneDir = path.join(PROJECT_ROOT, '.sandbox_clones', `${repoFullName.replace(/[/\\:]/g, '_')}_${sessionId}`);
   fs.mkdirSync(path.dirname(tempCloneDir), { recursive: true });
 
   try {
-    await githubService.cloneRepository(repoFullName, tempCloneDir, branch);
+    if (repoFullName.startsWith('demo/')) {
+      const scenarioKey = repoFullName.replace('demo/', '');
+      const scenarioSource = path.join(__dirname, 'scenarios', scenarioKey);
+      if (!fs.existsSync(scenarioSource)) {
+        throw new Error(`Demo scenario '${scenarioKey}' not found at ${scenarioSource}`);
+      }
+      sandboxManager._copyRecursiveSync(scenarioSource, tempCloneDir);
+      console.log(`[Scenarios] Loaded demo scenario '${scenarioKey}' into sandbox clone '${tempCloneDir}'`);
+    } else {
+      await githubService.cloneRepository(repoFullName, tempCloneDir, branch);
+    }
 
     setTimeout(() => {
       agent.run({
         repoPath: tempCloneDir,
         repoName: repoFullName,
-        mode
+        branch: branch || 'main',
+        mode,
+        humanInTheLoop,
+        targetFile
       }).catch(err => console.error('[Agent Error on Developer Repo]', err));
     }, 100);
 
@@ -107,11 +209,61 @@ app.post('/api/github/analyze-user-repo', async (req, res) => {
       status: 'agent_started',
       repoFullName,
       mode,
-      message: `Autonomous CI-Doctor swarm activated on '${repoFullName}'. Pull Request will be dispatched upon resolution.`
+      humanInTheLoop,
+      targetFile,
+      message: `Autonomous CI-Doctor swarm activated on '${repoFullName}'${targetFile ? ` [Target File: ${targetFile}]` : ''}.`
     });
   } catch (err) {
     console.error('[Clone Error]', err);
-    res.status(500).json({ error: `Could not clone repository '${repoFullName}': ${err.message}` });
+    res.status(500).json({ error: `Could not clone or load repository '${repoFullName}': ${err.message}` });
+  }
+});
+
+// Zero-Trust Gate 5: Human-in-the-Loop PR Dispatch Authorization Endpoint
+app.post('/api/github/dispatch-pr', async (req, res) => {
+  const { repoFullName, branchName, title, body, changes, sessionId } = req.body;
+  if (!repoFullName || !changes) {
+    return res.status(400).json({ error: 'repoFullName and changes are required' });
+  }
+
+  try {
+    console.log(`[Human Gate Approved] Dispatching PR for '${repoFullName}' on branch '${branchName}'...`);
+    const prResult = await githubService.createPullRequest({
+      repoFullName,
+      branchName: branchName || `ci-doctor/fix-${Date.now()}`,
+      baseBranch: 'main',
+      title: title || 'fix(ci-doctor): verified autonomous repair',
+      body: body || 'Patch verified and approved via CI-Doctor Human-in-the-Loop Gate.',
+      changes
+    });
+
+    if (sessionId) {
+      await SessionService.update(sessionId, {
+        status: 'COMPLETED',
+        prBranch: branchName,
+        prTitle: title,
+        prUrl: prResult.prUrl || null,
+        prNumber: prResult.prNumber || null
+      });
+    }
+
+    if (io) {
+      io.emit('agent:action', {
+        sessionId: sessionId || 'human_gate',
+        actionType: 'status',
+        content: `Human Gate Authorized: Live Pull Request #${prResult.prNumber || 42} dispatched to ${repoFullName}!`,
+        level: 'success',
+        meta: {
+          pr: prResult,
+          status: 'COMPLETED'
+        }
+      });
+    }
+
+    res.json({ success: true, pr: prResult });
+  } catch (err) {
+    console.error('[Dispatch PR Error]', err);
+    res.status(500).json({ error: `Failed to dispatch PR: ${err.message}` });
   }
 });
 

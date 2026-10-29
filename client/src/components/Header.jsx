@@ -1,9 +1,6 @@
 import React from 'react';
 
-export default function Header({ isConnected, currentRunId, health }) {
-  const isGroqActive = Boolean(health?.groq_configured);
-  const isGitHubLive = Boolean(health?.github_configured);
-
+export default function Header() {
   return (
     <div className="sidebar-brand-block">
       <div className="header-brand">
@@ -15,37 +12,12 @@ export default function Header({ isConnected, currentRunId, health }) {
         </div>
         <div className="brand-meta">
           <div className="brand-title">
-            CI-DOCTOR <span className="brand-tag">GROQ</span>
+            CI-DOCTOR
           </div>
           <div className="brand-sub">Autonomous Self-Healing CI/CD</div>
-        </div>
-      </div>
-
-      <div className="sidebar-meta-grid">
-        <div className={`status-pill ${isConnected ? 'online' : 'offline'}`} title="WebSocket Bus Status">
-          <span className="status-blink-dot"></span>
-          <span className="status-text">{isConnected ? 'LIVE' : 'OFFLINE'}</span>
-        </div>
-        <div 
-          className="status-pill" 
-          style={{ background: isGroqActive ? 'var(--brutal-cyan)' : 'var(--brutal-yellow)', color: '#000000' }} 
-          title={isGroqActive ? `Groq LPU Active (${health?.groq_model || 'llama-3.3-70b-versatile'})` : 'Groq API Key not set yet'}
-        >
-          <span className="status-text">{isGroqActive ? 'GROQ: ACTIVE' : 'GROQ: STANDBY'}</span>
-        </div>
-
-        <div 
-          className="status-pill" 
-          style={{ background: isGitHubLive ? 'var(--brutal-purple)' : '#ffffff', color: isGitHubLive ? '#ffffff' : '#000000' }} 
-          title={isGitHubLive ? 'Live GitHub Token Active' : 'GitHub Token Not Configured in .env'}
-        >
-          <span className="status-text">{isGitHubLive ? 'GH: CONNECTED' : 'GH: NO TOKEN'}</span>
-        </div>
-        <div className="run-stamp">
-          <span className="stamp-label">RUN</span>
-          <span className="stamp-val">#{currentRunId || '94827163'}</span>
         </div>
       </div>
     </div>
   );
 }
+
