@@ -54,13 +54,22 @@ export default function DiffInspector({
 
   const diffResult = renderDiffLines(diff);
 
+  // Extract file path from unified diff if present to ensure 100% accuracy with the active patch
+  let displayFile = targetFile;
+  if (diff) {
+    const diffFileMatch = diff.match(/^---\s+[ab]\/([^\r\n\t]+)/m);
+    if (diffFileMatch && diffFileMatch[1]) {
+      displayFile = diffFileMatch[1].trim();
+    }
+  }
+
   return (
     <section className="brutalist-card pane-card diff-card">
       <div className="brutalist-pane-header">
         <div className="inspector-tabs">
           <div className="file-tab">
             <span className="file-icon">📄</span>
-            <span className="file-name">{targetFile}</span>
+            <span className="file-name">{displayFile}</span>
             {diff && (
               <span className="diff-stats-badge">
                 <span className="stat-add">+{diffResult.additions || 0}</span>

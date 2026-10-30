@@ -67,7 +67,8 @@ export class SessionService {
         // fallback
       }
     }
-    return Array.from(inMemoryStore.sessions.values()).slice(-limit);
+    // Return newest sessions first (reverse insertion order)
+    return Array.from(inMemoryStore.sessions.values()).reverse().slice(0, limit);
   }
 }
 
