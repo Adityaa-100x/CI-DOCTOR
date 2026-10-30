@@ -106,6 +106,18 @@ app.get('/api/github/workflow-runs', async (req, res) => {
   }
 });
 
+// Check Live Pull Request Status (Open, Merged, Closed)
+app.get('/api/github/pr-status', async (req, res) => {
+  const { repoFullName, prNumber } = req.query;
+  if (!repoFullName || !prNumber) return res.status(400).json({ error: 'repoFullName and prNumber are required' });
+  try {
+    const prStatus = await githubService.getPullRequestStatus(repoFullName, parseInt(prNumber, 10));
+    res.json({ pr: prStatus });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Deploy Real GitHub Actions CI Workflow to Developer's Repository
 app.post('/api/github/deploy-ci-workflow', async (req, res) => {
   const { repoFullName, branch = 'main' } = req.body;

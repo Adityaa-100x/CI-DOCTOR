@@ -115,12 +115,16 @@ export default function DiffInspector({
 
         {/* Pull Request Ready Banner */}
         {pr && (
-          <div className="brutalist-pr-banner">
+          <div className={`brutalist-pr-banner ${pr.state === 'merged' ? 'pr-merged' : pr.state === 'closed' ? 'pr-closed' : ''}`}>
             <div className="pr-banner-left">
-              <div className="pr-stamp-label">🚀 AUTONOMOUS PR DISPATCHED</div>
+              <div className="pr-stamp-label">
+                {pr.state === 'merged' ? '💜 PR MERGED TO MAIN' : pr.state === 'closed' ? '⚪ PR CLOSED ON GITHUB' : '🚀 AUTONOMOUS PR DISPATCHED'}
+              </div>
               <div className="pr-banner-title">{pr.title}</div>
               <div className="pr-banner-sub">
                 BASE: <code className="pr-code">main</code> • HEAD: <code className="pr-code">{pr.branchName}</code> • PR #{pr.prNumber || 42}
+                {pr.state === 'merged' && <span style={{ marginLeft: '8px', color: '#6d28d9', fontWeight: 900 }}>• MERGED ✅</span>}
+                {pr.state === 'closed' && <span style={{ marginLeft: '8px', color: '#64748b', fontWeight: 900 }}>• CLOSED</span>}
               </div>
             </div>
             <a

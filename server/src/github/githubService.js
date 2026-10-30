@@ -31,13 +31,41 @@ export class GitHubService {
     if (!owner || !repo) return { total_count: 0, runs: [] };
     const octokit = this.getOctokit();
     try {
+      // 1. Fetch currently open PRs to know which feature branches are still active
+      let openBranches = new Set();
+      try {
+        const { data: openPRs } = await octokit.rest.pulls.list({
+          owner,
+          repo,
+          state: 'open',
+          per_page: 50
+        });
+        openBranches = new Set(openPRs.map(p => p.head.ref));
+      } catch (e) {
+        console.warn('[GitHubService] Could not list open PRs for filtering:', e.message);
+      }
+
+      // 2. Fetch recent workflow runs
       const { data } = await octokit.rest.actions.listWorkflowRunsForRepo({
         owner,
         repo,
-        per_page: 5
+        per_page: 15
       });
 
-      const runs = (data.workflow_runs || []).map(r => ({
+      // 3. Filter out workflow runs for feature branches whose PRs are already closed or merged
+      const activeRuns = (data.workflow_runs || []).filter(r => {
+        // Keep main / master branch runs
+        if (!r.head_branch || r.head_branch === 'main' || r.head_branch === 'master') {
+          return true;
+        }
+        // If it's a feature branch (e.g. ci-doctor/...), only keep if the PR is currently OPEN
+        if (r.head_branch.startsWith('ci-doctor/')) {
+          return openBranches.has(r.head_branch);
+        }
+        return openBranches.has(r.head_branch);
+      }).slice(0, 5);
+
+      const runs = activeRuns.map(r => ({
         id: r.id,
         name: r.name,
         runNumber: r.run_number,
@@ -53,12 +81,39 @@ export class GitHubService {
       }));
 
       return {
-        total_count: data.total_count,
+        total_count: runs.length,
         runs
       };
     } catch (err) {
       console.warn(`[GitHubService] Could not list workflow runs for '${repoFullName}':`, err.message);
       return { total_count: 0, runs: [], error: err.message };
+    }
+  }
+
+  /**
+   * Check live status of a pull request (open, closed, merged)
+   */
+  async getPullRequestStatus(repoFullName, prNumber) {
+    const [owner, repo] = repoFullName.split('/');
+    if (!owner || !repo || !prNumber) return null;
+    const octokit = this.getOctokit();
+    try {
+      const { data } = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+      return {
+        number: data.number,
+        state: data.state, // 'open' | 'closed'
+        merged: data.merged || Boolean(data.merged_at),
+        mergedAt: data.merged_at,
+        htmlUrl: data.html_url,
+        title: data.title
+      };
+    } catch (err) {
+      console.warn(`[GitHubService] Could not get PR #${prNumber} status:`, err.message);
+      return null;
     }
   }
 

@@ -52,12 +52,29 @@ export default function App() {
               if (data.session) {
                 if (data.session.diff) setDiff(data.session.diff);
                 if (data.session.prUrl) {
-                  setPr({
+                  const initialPr = {
                     prUrl: data.session.prUrl,
                     prNumber: data.session.prNumber,
                     title: data.session.prTitle,
-                    branchName: data.session.prBranch
-                  });
+                    branchName: data.session.prBranch,
+                    state: 'open'
+                  };
+                  setPr(initialPr);
+
+                  // Check live GitHub PR state (merged, closed, or open)
+                  if (data.session.prNumber && data.session.repoName) {
+                    fetch(`/api/github/pr-status?repoFullName=${encodeURIComponent(data.session.repoName)}&prNumber=${data.session.prNumber}`)
+                      .then(r => r.json())
+                      .then(statusData => {
+                        if (statusData.pr) {
+                          setPr(prev => ({
+                            ...prev,
+                            state: statusData.pr.merged ? 'merged' : statusData.pr.state
+                          }));
+                        }
+                      })
+                      .catch(() => {});
+                  }
                 }
                 if (data.session.status === 'COMPLETED') setStatus('RESOLVED');
                 if (data.session.language) setEcosystem(data.session.language);

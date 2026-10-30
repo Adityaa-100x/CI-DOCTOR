@@ -817,6 +817,26 @@ body {
   flex-shrink: 0;
 }
 
+.brutalist-pr-banner.pr-merged {
+  background: #ede9fe;
+  border-bottom: 3px solid #7c3aed;
+}
+
+.brutalist-pr-banner.pr-merged .pr-stamp-label {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.brutalist-pr-banner.pr-closed {
+  background: #f1f5f9;
+  border-bottom: 3px solid #64748b;
+}
+
+.brutalist-pr-banner.pr-closed .pr-stamp-label {
+  background: #64748b;
+  color: #ffffff;
+}
+
 .pr-banner-left {
   display: flex;
   flex-direction: column;
