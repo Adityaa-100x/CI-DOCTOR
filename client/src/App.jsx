@@ -155,6 +155,7 @@ export default function App() {
     setPr(null);
     setPendingPr(null);
     setStatus('STANDBY');
+    setTargetArtifact('');
   };
 
   const handleApprovePr = async () => {
@@ -186,6 +187,11 @@ export default function App() {
     setIsRunning(true);
     setStatus('ANALYZING');
     setEcosystem(repo.language || 'Polyglot');
+    if (targetFile && targetFile !== 'ALL') {
+      setTargetArtifact(targetFile);
+    } else {
+      setTargetArtifact(`${repo.name}/...`);
+    }
 
     const newRunId = Math.floor(Math.random() * 89999999 + 10000000).toString();
     setCurrentRunId(newRunId);

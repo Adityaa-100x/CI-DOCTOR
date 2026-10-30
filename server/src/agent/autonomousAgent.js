@@ -149,16 +149,18 @@ export class AutonomousEngineerAgent {
         language = 'C / C++';
       }
 
-      const primaryFile = sourceFiles[0] || allFiles[0] || 'README.md';
+      const activeTargetFile = (targetFile && targetFile !== 'ALL')
+        ? targetFile
+        : (sourceFiles[0] || allFiles[0] || 'README.md');
 
-      await SessionService.update(sessionId, { language, targetFile: primaryFile });
+      await SessionService.update(sessionId, { language, targetFile: activeTargetFile });
 
       if (this.io) {
         this.io.emit('agent:profile', {
           language,
           testTrack: testFiles.length > 0 ? 'TEST_RICH' : 'TEST_LESS',
           runnerCommand,
-          targetFile: primaryFile,
+          targetFile: activeTargetFile,
           testFile: testFiles[0] || null,
           totalCodeFiles: sourceFiles.length
         });
@@ -253,6 +255,8 @@ export class AutonomousEngineerAgent {
           const matched = sourceFiles.find(f => f.endsWith(targetBase) || f === ciDiagnosis.failingFile);
           if (matched) {
             filesToAudit = [matched];
+            await SessionService.update(sessionId, { targetFile: matched });
+            if (this.io) this.io.emit('agent:profile', { language, targetFile: matched });
           } else {
             filesToAudit = sourceFiles.slice(0, 3);
           }

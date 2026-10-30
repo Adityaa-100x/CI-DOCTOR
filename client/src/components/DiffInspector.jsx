@@ -25,7 +25,9 @@ export default function DiffInspector({
     if (!rawDiff) {
       return (
         <span className="diff-placeholder">
-          // Ready for execution. Select a repository and run CI-Doctor to view unified diffs.
+          {status !== 'STANDBY'
+            ? `// 🩺 Autonomous swarm active on ${displayFile}...\n// Inspecting AST contracts, boundary edge cases, and compiler syntax in sandbox.`
+            : `// Ready for execution. Select a repository file or failed CI run to start.`}
         </span>
       );
     }
@@ -83,7 +85,17 @@ export default function DiffInspector({
         <div className="pane-controls">
           <div className={`verification-stamp ${isVerified ? 'verified-passed' : 'verified-pending'}`}>
             <span className="stamp-icon">{isVerified ? '✔' : '⏳'}</span>
-            <span className="stamp-text">{isVerified ? 'EXIT 0 : VERIFIED' : 'AWAITING VERIFY'}</span>
+            <span className="stamp-text">
+              {isVerified
+                ? 'EXIT 0 : VERIFIED'
+                : status === 'ANALYZING'
+                ? 'SWARM ENGAGED'
+                : status === 'PATCHING'
+                ? 'APPLYING PATCH'
+                : status === 'VERIFYING'
+                ? 'COMPILING DRY-RUN'
+                : 'AWAITING VERIFY'}
+            </span>
           </div>
           <button className="brutalist-btn btn-copy" onClick={handleCopy} disabled={!diff}>
             {copied ? '✔ COPIED' : '📋 COPY DIFF'}
