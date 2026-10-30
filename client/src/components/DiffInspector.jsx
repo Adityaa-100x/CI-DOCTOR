@@ -20,6 +20,15 @@ export default function DiffInspector({
     });
   };
 
+  // Extract file path from unified diff if present to ensure 100% accuracy with the active patch
+  let displayFile = targetFile;
+  if (diff) {
+    const diffFileMatch = diff.match(/^---\s+[ab]\/([^\r\n\t]+)/m);
+    if (diffFileMatch && diffFileMatch[1]) {
+      displayFile = diffFileMatch[1].trim();
+    }
+  }
+
   // Render unified diff with syntax colors
   const renderDiffLines = (rawDiff) => {
     if (!rawDiff) {
@@ -55,15 +64,6 @@ export default function DiffInspector({
   };
 
   const diffResult = renderDiffLines(diff);
-
-  // Extract file path from unified diff if present to ensure 100% accuracy with the active patch
-  let displayFile = targetFile;
-  if (diff) {
-    const diffFileMatch = diff.match(/^---\s+[ab]\/([^\r\n\t]+)/m);
-    if (diffFileMatch && diffFileMatch[1]) {
-      displayFile = diffFileMatch[1].trim();
-    }
-  }
 
   return (
     <section className="brutalist-card pane-card diff-card">
