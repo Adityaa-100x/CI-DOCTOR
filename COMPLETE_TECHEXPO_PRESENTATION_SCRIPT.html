@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>CI-Doctor — Master TechExpo Presentation Script</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      color: #111827;
+      background: #f9fafb;
+      margin: 0;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 40px 50px;
+      border: 2px solid #000000;
+      box-shadow: 6px 6px 0px #000000;
+    }
+
+    header {
+      border-bottom: 3px solid #000000;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #ffe600;
+      color: #000000;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border: 2px solid #000000;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0 0 8px 0;
+      color: #000000;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #4b5563;
+      margin: 0;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #000000;
+      border-left: 5px solid #000000;
+      padding-left: 12px;
+      margin-top: 35px;
+      margin-bottom: 15px;
+    }
+
+    blockquote {
+      background: #fdfae5;
+      border: 2px solid #000000;
+      box-shadow: 3px 3px 0px #000000;
+      padding: 16px 20px;
+      margin: 15px 0;
+      font-size: 0.95rem;
+      font-style: italic;
+      color: #1f2937;
+    }
+
+    .action-cue {
+      background: #e0f2fe;
+      border: 2px solid #0284c7;
+      padding: 8px 14px;
+      margin: 12px 0 6px 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0369a1;
+      display: inline-block;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+
+    th,
+    td {
+      border: 2px solid #000000;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: #000000;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) {
+      background: #f3f4f6;
+    }
+
+    .qa-box {
+      background: #f3f4f6;
+      border: 2px solid #000000;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .qa-question {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #000000;
+      margin-bottom: 8px;
+    }
+
+    .qa-answer {
+      font-size: 0.9rem;
+      color: #374151;
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: #00f279;
+      color: #000000;
+      border: 3px solid #000000;
+      box-shadow: 4px 4px 0px #000000;
+      padding: 14px 22px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.1s ease;
+      z-index: 999;
+    }
+
+    .print-btn:hover {
+      background: #ffe600;
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0px #000000;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+
+      .container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+
+      .print-btn {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <button class="print-btn" onclick="window.print()">🖨️ SAVE AS PDF / PRINT</button>
+
+  <div class="container">
+    <header>
+      <span class="badge">TECHEXPO MASTER SCRIPT</span>
+      <h1>🩺 CI-Doctor: Presentation Playbook</h1>
+      <p class="subtitle">Universal Autonomous CI/CD Self-Healing AI Swarm (MERN + Groq LPU + GitHub Actions)</p>
+    </header>
+
+    <h2>⏱️ Presentation Timing Roadmap</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Phase</th>
+          <th>Duration</th>
+          <th>What Judges Are Evaluating</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. The Hook & Problem</strong></td>
+          <td>45s</td>
+          <td>Problem severity, developer pain, why chatbots fail</td>
+        </tr>
+        <tr>
+          <td><strong>2. Core Innovation</strong></td>
+          <td>45s</td>
+          <td>MERN stack, Groq LPU speed (~400 t/s), Zero-Trust sandboxing</td>
+        </tr>
+        <tr>
+          <td><strong>3. Live Demo & GitHub</strong></td>
+          <td>90s</td>
+          <td>Real execution on GitHub, log parsing, green passing PR checks</td>
+        </tr>
+        <tr>
+          <td><strong>4. 5 Zero-Trust Gates</strong></td>
+          <td>45s</td>
+          <td>Safety, branch protection, immutable test benchmarks</td>
+        </tr>
+        <tr>
+          <td><strong>5. Impact & Close</strong></td>
+          <td>30s</td>
+          <td>MTTR reduced from 45 mins to 15s; business ROI</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>🎙️ Phase 1: The Hook & The Real Problem (45s)</h2>
+    <blockquote>
+      "Good morning, judges!<br><br>
+      In modern software engineering, when a developer pushes code to GitHub and the CI/CD pipeline fails, everything
+      stops. Engineers waste an average of <strong>30 to 45 minutes</strong> context-switching, digging through
+      thousands of lines of compiler logs, writing fixes, and opening manual Pull Requests.<br><br>
+      Most AI coding assistants today are passive chatbots — you have to copy-paste code back and forth, and they often
+      hallucinate broken syntax.<br><br>
+      We asked: <strong>What if your CI/CD pipeline was an autonomous immune system that diagnosed its own failures,
+        verified its own fixes in an isolated sandbox, and raised passing Pull Requests automatically?</strong><br><br>
+      That is why we built <strong>CI-Doctor</strong>."
+    </blockquote>
+
+    <h2>⚡ Phase 2: Core Innovation & Architecture (45s)</h2>
+    <blockquote>
+      "CI-Doctor is not a mock simulation. It operates on <strong>100% real GitHub repositories</strong>.<br><br>
+      Our architecture combines three powerful pillars:<br>
+      1. <strong>Ultra-Fast AI with Groq LPUs</strong>: Traditional cloud LLMs take 30 to 60 seconds just to reason.
+      Running on Groq Language Processing Units gives us <strong>~400 tokens per second</strong>, completing multi-turn
+      reasoning in under 3 seconds.<br>
+      2. <strong>Real Cloud CI Integration</strong>: Integrates with GitHub Actions via Octokit. Deploys real Ubuntu
+      runners, detects failures, and ingests live build logs.<br>
+      3. <strong>Zero-Trust Compiler Sandboxes</strong>: Every patch is verified locally with native compilers
+      (<code>javac</code>, <code>node --check</code>) before any PR is created.<br><br>
+      Let me show you this running live right now."
+    </blockquote>
+
+    <h2>🖥️ Phase 3: Live Demonstration (90s)</h2>
+
+    <div class="action-cue">👉 SCREEN ACTION 1: Show the Mission Control & Real GitHub Repo</div>
+    <blockquote>
+      "Here is our mission control dashboard. Notice it is connected live to our real GitHub account
+      (<code>@paneertikkadedo</code>) and repository (<code>paneertikkadedo/DSA</code>).<br>
+      In the sidebar, you can see all 37 real Java algorithm source files. Below that is our live <strong>GitHub Actions
+        CI Monitor</strong>, querying GitHub's workflow API in real time."
+    </blockquote>
+
+    <div class="action-cue">👉 SCREEN ACTION 2: Click 'AUTO-HEAL THIS CI FAILURE'</div>
+    <blockquote>
+      "Watch what happens when I trigger autonomous self-healing on this failed run:<br><br>
+      • <strong>Stage 1</strong>: Ingests raw failure logs directly from the GitHub Actions runner.<br>
+      • <strong>Stage 2</strong>: Groq AI pinpoints that <code>0235-lowest-common-ancestor</code> failed compilation
+      because the <code>TreeNode</code> class definition was missing.<br>
+      • <strong>Stage 3</strong>: The swarm clones the repo into an isolated ephemeral sandbox.<br>
+      • <strong>Stage 4</strong>: Writes the surgical repair and compiles it with <code>javac</code>. The compiler
+      outputs <strong>Exit Code 0: Verified</strong>.<br>
+      • <strong>Stage 5</strong>: To protect the <code>main</code> branch, it creates a new isolated feature branch
+      (<code>ci-doctor/fix-...</code>) and opens a live Pull Request."
+    </blockquote>
+
+    <div class="action-cue">👉 SCREEN ACTION 3: Switch to GitHub Browser Tab</div>
+    <blockquote>
+      "Look here on GitHub: in just <strong>14 seconds</strong>, CI-Doctor raised this verified Pull Request.<br><br>
+      Notice three critical things:<br>
+      1. The PR description contains the complete diagnostic root cause, error snippet, and unified diff.<br>
+      2. It was committed to an isolated feature branch, respecting enterprise branch protection rules.<br>
+      3. Look at the GitHub Actions status: <strong>All checks have passed (Green checkmark ✅)</strong>. It is ready for
+      one-click merge with zero conflicts."
+    </blockquote>
+
+    <h2>🛡️ Phase 4: The 5 Zero-Trust Safety Gates (45s)</h2>
+    <blockquote>
+      "The biggest concern with AI code generation is: 'Will it break production?'<br><br>
+      To prevent this, CI-Doctor enforces <strong>5 Zero-Trust Safety Gates</strong>:<br>
+      1. <strong>Immutable Test Benchmark Shield</strong>: Existing test assertion files are strictly read-only — the AI
+      cannot cheat by weakening tests.<br>
+      2. <strong>Sandbox Compiler Syntax Verification</strong>: Every fix must pass local dry-run compilation
+      (<code>javac</code>) before any commit is made.<br>
+      3. <strong>Multi-Turn Reflection Loop</strong>: If a compiler check fails in the sandbox, the error is fed back to
+      Groq to self-correct (up to 3 turns).<br>
+      4. <strong>Sensitive File & Secret Shield</strong>: <code>.env</code>, keys, and credentials are shielded and
+      redacted from logs.<br>
+      5. <strong>Human-in-the-Loop Approval Gate</strong>: Teams can require human review before creating PRs."
+    </blockquote>
+
+    <h2>📈 Phase 5: Real-World Impact & Closing (30s)</h2>
+    <blockquote>
+      "In summary, CI-Doctor delivers three transformative benefits:<br>
+      • <strong>Speed</strong>: Reduces mean-time-to-repair from 45 minutes to <strong>15 seconds</strong>.<br>
+      • <strong>Developer Focus</strong>: Engineers stay in flow instead of debugging CI logs.<br>
+      • <strong>Enterprise Safety</strong>: Zero hallucinations reach production thanks to Zero-Trust
+      verification.<br><br>
+      CI-Doctor transforms CI/CD from a passive roadblock into an active, self-healing immune system.<br><br>
+      Thank you, judges! We would love to take your questions."
+    </blockquote>
+
+    <h2>🎯 Phase 6: Top 5 Q&A Defense for Judges</h2>
+
+    <div class="qa-box">
+      <div class="qa-question">Q1: What happens if the AI generates bad code or fails tests?</div>
+      <div class="qa-answer"><strong>Answer:</strong> "That is handled by Gate 3: The Multi-Turn Reflection Loop. If the
+        patched code fails compiler checks or test assertions inside the sandbox, CI-Doctor feeds the exact error back
+        into Groq to self-correct up to 3 times. If it cannot guarantee a verified fix with Exit Code 0, it gracefully
+        aborts without polluting Git history."</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-question">Q2: Why did you use Groq instead of standard OpenAI GPT-4?</div>
+      <div class="qa-answer"><strong>Answer:</strong> "Latency is critical in CI/CD. Standard cloud LLMs take 30 to 60
+        seconds just to stream reasoning tokens. Groq's Language Processing Units (LPUs) run at ~400 tokens/second,
+        which allows our multi-turn reflection loop to diagnose, patch, compile, and open a PR in under 15 seconds."
+      </div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-question">Q3: Does this only work for Java, or is it polyglot?</div>
+      <div class="qa-answer"><strong>Answer:</strong> "CI-Doctor features dynamic ecosystem detection. If it detects
+        <code>requirements.txt</code> or <code>.py</code>, it deploys Python CI and runs <code>pytest</code> and
+        <code>py_compile</code>. If it detects <code>package.json</code>, it runs <code>node --test</code>. For Java, it
+        runs <code>javac</code> with JDK 17. The entire agent pipeline adapts dynamically."</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-question">Q4: How do you prevent breaking changes on the main branch?</div>
+      <div class="qa-answer"><strong>Answer:</strong> "CI-Doctor never commits directly to <code>main</code>. It creates
+        an isolated feature branch (e.g. <code>ci-doctor/fix-...</code>) branched from the base commit, commits only to
+        that branch, and opens a Pull Request. This strictly complies with enterprise branch protection policies."</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-question">Q5: Is this using pre-recorded or mock data?</div>
+      <div class="qa-answer"><strong>Answer:</strong> "Not at all. You can inspect the repository on GitHub right now.
+        The commits, the GitHub Actions Ubuntu runner jobs, the raw logs, and the Pull Requests are 100% real and
+        executed via the official GitHub API."</div>
+    </div>
+
+  </div>
+</body>
+
+</html>
