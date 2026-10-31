@@ -484,9 +484,10 @@ export class AutonomousEngineerAgent {
             }
           }
         }
+      }
 
-        // Step 4: Dispatch Pull Request if Fixes Were Applied
-        const diffs = toolExecutor.getUnifiedDiffs();
+      // Step 4: Dispatch Pull Request if Fixes Were Applied
+      const diffs = toolExecutor.getUnifiedDiffs();
         const primaryDiff = diffs.map(d => d.diff).join('\n\n');
 
         if (!primaryDiff || findings.length === 0) {
@@ -659,7 +660,6 @@ export class AutonomousEngineerAgent {
           diff: primaryDiff,
           pr: prResult.pr
         };
-      }
 
     } catch (err) {
       await emitEvent('status', {
