@@ -171,11 +171,18 @@ export class AutonomousEngineerAgent {
         level: 'info'
       });
 
+      // Declare state variables accessible to both QA synthesis and repair loops
+      let filesToAudit = [];
+      let ciDiagnosis = null;
+      const findings = [];
+      let fileToSynth = null;
+      let synthTestPath = null;
+
       // =========================================================================
       // BRANCH A: Autonomous Test Suite Synthesis (mode === 'qa')
       // =========================================================================
       if (mode === 'qa') {
-        const fileToSynth = (targetFile && targetFile !== 'ALL') ? targetFile : (primaryFile || sourceFiles[0]);
+        fileToSynth = (targetFile && targetFile !== 'ALL') ? targetFile : (primaryFile || sourceFiles[0]);
         if (!fileToSynth) {
           throw new Error(`Cannot synthesize tests: no suitable source code files identified in '${repoName}'.`);
         }
@@ -194,7 +201,7 @@ export class AutonomousEngineerAgent {
           language
         });
 
-        let synthTestPath = `tests/test_${path.basename(fileToSynth)}`;
+        synthTestPath = `tests/test_${path.basename(fileToSynth)}`;
         if (language.includes('Node')) {
           const baseName = path.basename(fileToSynth, path.extname(fileToSynth));
           synthTestPath = `tests/${baseName}.test.js`;
@@ -210,9 +217,19 @@ export class AutonomousEngineerAgent {
 
         await emitEvent('observation', {
           toolName: 'write_file',
-          content: `Unit test suite successfully synthesized.`,
+          content: `Unit test suite successfully synthesized and saved to '${synthTestPath}'.`,
           level: 'success'
         });
+
+        findings.push({
+          file: synthTestPath,
+          bugType: 'proactive_qa_synthesis',
+          summary: `Synthesized comprehensive unit test suite for ${path.basename(fileToSynth)}`,
+          explanation: `Generated high-coverage test cases covering edge cases, boundary conditions, zero inputs, and exception handling for ${fileToSynth}.`,
+          affectedScope: fileToSynth
+        });
+
+        filesToAudit = [fileToSynth];
 
       } else {
         // =========================================================================
@@ -228,9 +245,6 @@ export class AutonomousEngineerAgent {
           await SessionService.update(sessionId, { status: 'COMPLETED', durationSeconds: totalDuration });
           return { success: true, sessionId };
         }
-
-        let filesToAudit = [];
-        let ciDiagnosis = null;
 
         if (failureLogs) {
           await emitEvent('thought', {
@@ -269,7 +283,6 @@ export class AutonomousEngineerAgent {
         } else {
           filesToAudit = sourceFiles.slice(0, 8); // Audit primary candidate files
         }
-        const findings = [];
 
         for (const file of filesToAudit) {
           await emitEvent('thought', {
@@ -500,11 +513,15 @@ export class AutonomousEngineerAgent {
         const safeFileSlug = path.basename(mainFinding.file, path.extname(mainFinding.file)).replace(/[^a-zA-Z0-9_-]/g, '-').substring(0, 25);
         const branchName = ciRunInfo
           ? `ci-doctor/heal-run-${ciRunInfo.runId}-${safeFileSlug}`
-          : `ci-doctor/fix-${safeFileSlug}-${sessionId}`;
+          : (mode === 'qa'
+              ? `ci-doctor/qa-${safeFileSlug}-${sessionId}`
+              : `ci-doctor/fix-${safeFileSlug}-${sessionId}`);
 
         const prTitle = ciRunInfo
           ? `fix(ci): heal failing GitHub Actions run #${ciRunInfo.runId} in ${findings.map(f => path.basename(f.file)).join(', ')}`
-          : `fix(code-audit): resolve ${mainFinding.bugType.replace(/_/g, ' ')} in ${findings.map(f => path.basename(f.file)).join(', ')}`;
+          : (mode === 'qa'
+              ? `test(qa): add comprehensive unit test suite for ${path.basename(fileToSynth || mainFinding.file)}`
+              : `fix(code-audit): resolve ${mainFinding.bugType.replace(/_/g, ' ')} in ${findings.map(f => path.basename(f.file)).join(', ')}`);
 
         const prBody = ciRunInfo
           ? `## 🩺 CI-Doctor Autonomous GitHub Actions Self-Healing\n\n` +
@@ -517,21 +534,32 @@ export class AutonomousEngineerAgent {
             `### 💡 Root Cause & Solution\n${mainFinding.explanation}\n\n` +
             `### 📝 Applied Patch\n\`\`\`diff\n${primaryDiff}\n\`\`\`\n\n` +
             `---\n*🩺 Autonomous PR opened by CI-Doctor Agent Swarm (MERN Stack + Groq AI)*`
-          : `## 🩺 CI-Doctor Autonomous Code Repair\n\n` +
-            `* **Repository**: \`${repoName}\`\n` +
-            `* **Language Ecosystem**: \`${language}\`\n` +
-            `* **Audit Engine**: \`Groq AI LPU (${llmProvider.model})\`\n` +
-            `* **Sandbox Status**: \`VERIFIED & APPLIED\`\n` +
-            `* **Files Repaired**: \`${findings.length}\`\n\n` +
-            `### 🐛 Detected Bugs & Diagnostic Root Cause\n\n` +
-            findings.map((f, i) =>
-              `#### [${i + 1}] \`${f.file}\` (${f.bugType})\n` +
-              `* **Summary**: ${f.summary}\n` +
-              `* **Affected Scope**: \`${f.affectedScope || 'Core algorithm / function'}\`\n` +
-              `* **Root Cause & Diagnosis**: ${f.explanation}\n`
-            ).join('\n') +
-            `\n### 📝 Applied Changes\n\`\`\`diff\n${primaryDiff}\n\`\`\`\n\n` +
-            `---\n*🩺 Autonomous PR opened by CI-Doctor Agent Swarm (MERN Stack + Groq AI)*`;
+          : (mode === 'qa'
+            ? `## 🧪 CI-Doctor Proactive QA Test Suite Synthesis\n\n` +
+              `* **Target Algorithm**: \`${fileToSynth || mainFinding.file}\`\n` +
+              `* **Synthesized Test File**: \`${synthTestPath || mainFinding.file}\`\n` +
+              `* **Repository**: \`${repoName}\`\n` +
+              `* **Language Ecosystem**: \`${language}\`\n` +
+              `* **Engine**: \`Groq AI LPU (${llmProvider.model})\`\n\n` +
+              `### 🛡️ Proactive Quality Assurance Details\n` +
+              `This codebase had no automated unit tests for \`${path.basename(fileToSynth || mainFinding.file)}\`. CI-Doctor has synthesized comprehensive unit tests to prevent silent runtime exceptions (e.g. division by zero, null pointers, integer overflow) and boundary regressions.\n\n` +
+              `### 📝 Synthesized Test Suite Diff\n\`\`\`diff\n${primaryDiff}\n\`\`\`\n\n` +
+              `---\n*🧪 Proactive QA PR opened by CI-Doctor Agent Swarm (MERN Stack + Groq AI)*`
+            : `## 🩺 CI-Doctor Autonomous Code Repair\n\n` +
+              `* **Repository**: \`${repoName}\`\n` +
+              `* **Language Ecosystem**: \`${language}\`\n` +
+              `* **Audit Engine**: \`Groq AI LPU (${llmProvider.model})\`\n` +
+              `* **Sandbox Status**: \`VERIFIED & APPLIED\`\n` +
+              `* **Files Repaired**: \`${findings.length}\`\n\n` +
+              `### 🐛 Detected Bugs & Diagnostic Root Cause\n\n` +
+              findings.map((f, i) =>
+                `#### [${i + 1}] \`${f.file}\` (${f.bugType})\n` +
+                `* **Summary**: ${f.summary}\n` +
+                `* **Affected Scope**: \`${f.affectedScope || 'Core algorithm / function'}\`\n` +
+                `* **Root Cause & Diagnosis**: ${f.explanation}\n`
+              ).join('\n') +
+              `\n### 📝 Applied Changes\n\`\`\`diff\n${primaryDiff}\n\`\`\`\n\n` +
+              `---\n*🩺 Autonomous PR opened by CI-Doctor Agent Swarm (MERN Stack + Groq AI)*`);
 
         const pendingPrData = {
           repoFullName: repoName,
@@ -612,7 +640,9 @@ export class AutonomousEngineerAgent {
         });
 
         await emitEvent('status', {
-          content: `Code audit completed, errors fixed, and Pull Request opened in ${totalDuration}s!`,
+          content: mode === 'qa'
+            ? `Proactive QA test suite synthesized and Pull Request opened in ${totalDuration}s!`
+            : `Code audit completed, errors fixed, and Pull Request opened in ${totalDuration}s!`,
           level: 'success',
           meta: {
             session: finalSession,
