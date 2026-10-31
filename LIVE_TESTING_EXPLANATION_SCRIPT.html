@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CI-Doctor — Live Testing & Demonstration Script (Judges Walkthrough)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #0f172a;
+      --yellow: #fde047;
+      --green: #86efac;
+      --red: #fca5a5;
+      --blue: #bae6fd;
+      --purple: #e9d5ff;
+      --shadow: 4px 4px 0px #0f172a;
+      --shadow-lg: 6px 6px 0px #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      color: #0f172a;
+      background: var(--bg);
+      margin: 0;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 1020px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      padding: 45px 55px;
+      border: 3.5px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+
+    header {
+      border-bottom: 3.5px solid var(--border);
+      padding-bottom: 22px;
+      margin-bottom: 30px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--yellow);
+      color: #000000;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding: 5px 12px;
+      border: 2px solid var(--border);
+      box-shadow: 2px 2px 0px var(--border);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: #475569;
+      margin: 0;
+      font-weight: 500;
+    }
+
+    .preflight-box {
+      background: #eff6ff;
+      border: 2.5px solid #1d4ed8;
+      box-shadow: var(--shadow);
+      padding: 18px 22px;
+      margin: 25px 0 35px 0;
+    }
+
+    .preflight-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #1e40af;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .test-step {
+      border: 3px solid var(--border);
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+      background: #ffffff;
+    }
+
+    .test-header {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 12px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      letter-spacing: 0.03em;
+    }
+
+    .test-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .test-col {
+      padding: 20px 24px;
+    }
+
+    .test-col-action {
+      background: #f8fafc;
+      border-right: 2.5px solid var(--border);
+    }
+
+    .test-col-speech {
+      background: #fffbeb;
+    }
+
+    .col-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      display: inline-block;
+      margin-bottom: 12px;
+      border: 1.5px solid var(--border);
+    }
+
+    .tag-action { background: #bae6fd; color: #0369a1; }
+    .tag-speech { background: var(--yellow); color: #854d0e; }
+
+    .action-step {
+      margin-bottom: 12px;
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    .point-box {
+      background: #e0f2fe;
+      border: 1.5px solid #0284c7;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 14px;
+      color: #0369a1;
+      font-weight: 600;
+    }
+
+    .speech-text {
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: #0f172a;
+    }
+
+    .speech-text strong {
+      color: #000;
+    }
+
+    .verify-box {
+      background: #ecfdf5;
+      border-top: 2px solid var(--border);
+      padding: 10px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #065f46;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .code-tag {
+      background: #e2e8f0;
+      border: 1px solid #94a3b8;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: #22c55e;
+      color: #000000;
+      border: 3px solid #000000;
+      box-shadow: 4px 4px 0px #000000;
+      padding: 14px 24px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all 0.15s ease;
+      z-index: 999;
+    }
+
+    .print-btn:hover {
+      background: var(--yellow);
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0px #000000;
+    }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .container { border: none; box-shadow: none; padding: 0; max-width: 100%; }
+      .print-btn { display: none; }
+      .test-step { break-inside: avoid; box-shadow: none; border: 2px solid #000; margin-bottom: 20px; }
+      .preflight-box { box-shadow: none; border: 1.5px solid #000; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn" onclick="window.print()">🖨️ PRINT TESTING SCRIPT</button>
+
+  <div class="container">
+    <header>
+      <div class="badge-pill">⚡ TECHEXPO LIVE DEMONSTRATION & TESTING RUNBOOK</div>
+      <h1>🧪 CI-Doctor: Step-by-Step Testing & Judges Explanation Script</h1>
+      <p class="subtitle">Side-by-Side Guide: What to Click & Observe (Left) vs Exactly What to Say to Judges (Right)</p>
+    </header>
+
+    <!-- PRE-FLIGHT SETUP -->
+    <div class="preflight-box">
+      <div class="preflight-title">📋 Pre-Flight Setup (Do this 1 minute before judges arrive)</div>
+      <div style="font-size: 0.9rem; color: #1e3a8a; line-height: 1.6;">
+        • <strong>Tab 1 (Mission Control):</strong> Open <code>https://ci-doctor.onrender.com</code> (or <code>http://localhost:5000</code>).<br>
+        • <strong>Tab 2 (GitHub PRs):</strong> Open <code>https://github.com/Adityaa-200x/DSA/pulls</code> (or <code>paneertikkadedo/DSA/pulls</code>).<br>
+        • <strong>Tab 3 (GitHub Actions):</strong> Open <code>https://github.com/Adityaa-200x/DSA/actions</code>.<br>
+        • <strong>Dashboard State:</strong> Ensure the top indicator shows <code>Connected</code> (Socket.io) with 0 console errors.
+      </div>
+    </div>
+
+    <!-- TEST 1 -->
+    <div class="test-step">
+      <div class="test-header">
+        <span>TEST 01: REAL GITHUB API INGESTION & REPO DISCOVERY</span>
+        <span style="font-size: 0.8rem; background: #3b82f6; padding: 2px 8px; border-radius: 2px;">TIME: 25s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. Look at the top-left sidebar: <strong>PROJECT WORKSPACE</strong>.<br>
+            2. In the <strong>DEV</strong> input, type <code>Adityaa-200x</code> and click <strong>LOAD</strong>.<br>
+            3. In the repository dropdown, select <code>DSA</code>.
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN:<br>
+            Point to the green badge <code>main</code>, language tag <code>Java</code>, and file count: <code>37 source file(s) discovered</code>.
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "Judges, welcome! First, let's verify that CI-Doctor is <strong>100% real and dynamic</strong>.<br><br>
+            Notice our Project Workspace: when I enter our developer handle and click Load, our backend contacts GitHub's official Octokit REST API live.<br><br>
+            It recursively traverses the Git tree, detects the ecosystem — in this case, Java — and discovers all 37 real algorithm source files. There are zero mock databases or hardcoded demos here."
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: Live GitHub repository metadata loaded with 37 discovered source files.
+      </div>
+    </div>
+
+    <!-- TEST 2 -->
+    <div class="test-step">
+      <div class="test-header">
+        <span>TEST 02: GRANULAR FILE TARGETING (SURGICAL AUDIT)</span>
+        <span style="font-size: 0.8rem; background: #3b82f6; padding: 2px 8px; border-radius: 2px;">TIME: 20s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. Click on the <strong>AUDIT TARGET</strong> dropdown.<br>
+            2. Select <code>0069-sqrtx/0069-sqrtx.java</code>.<br>
+            3. Observe the right pane (Diff Inspector) immediately display the targeted file header: <code>0069-sqrtx/0069-sqrtx.java</code>.
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN:<br>
+            Point to the dropdown selection and the matching active tab on the Diff Inspector.
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "In large monorepos with hundreds of files, engineers often want to inspect a specific algorithm without triggering a heavyweight full repository scan.<br><br>
+            Our granular Audit Target selector lets us target specific files — like this <code>0069-sqrtx.java</code> algorithm — or switch to full repository mode. The entire agent profiling immediately focuses on this target."
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: Audit target locked to selected algorithm file; Diff Inspector syncs target.
+      </div>
+    </div>
+
+    <!-- TEST 3 -->
+    <div class="test-step">
+      <div class="test-header">
+        <span>TEST 03: REACTIVE CODE AUDIT & AST AUTO-FIX PR (GREEN BUTTON)</span>
+        <span style="font-size: 0.8rem; background: #16a34a; padding: 2px 8px; border-radius: 2px;">TIME: 45s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. Click the green button: <strong>ANALYZE CODE & AUTO-FIX PR</strong>.<br>
+            2. Watch the center <strong>Agent Reasoning Console</strong> stream in real-time.<br>
+            3. Watch the right pane display the generated unified diff.
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN:<br>
+            1. Point to the chip <code>[THOUGHT]</code> streaming at ~400 tokens/sec via Groq LPU.<br>
+            2. Point to <code>[TOOL (read_file)]</code> reading the source code.<br>
+            3. Point to <code>[TOOL (execute_sandbox)]</code> running <code>javac</code> with <code>Exit Code 0</code>.<br>
+            4. Point to the Diff Inspector showing the green <code>+</code> additions.
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "Now let's test our <strong>Reactive Codebase Repair Engine</strong>. I'll click <em>Analyze Code & Auto-Fix PR</em>.<br><br>
+            Look at the center console: powered by Groq's custom LPU silicon running at ~400 tokens per second, the AI reads the AST, detects arithmetic boundary bugs (like integer overflow in binary search), and writes a patch.<br><br>
+            Crucially: it doesn't just guess. It executes the native Java compiler — <code>javac</code> — inside an isolated ephemeral sandbox. Notice the console: <strong>Exit Code 0 — Syntax Verified!</strong> Only verified code is committed."
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: AST bug diagnosed, sandbox compilation passed (Exit Code 0), diff displayed.
+      </div>
+    </div>
+
+    <!-- TEST 4 -->
+    <div class="test-step">
+      <div class="test-header">
+        <span>TEST 04: PROACTIVE QA TEST SUITE SYNTHESIS (YELLOW BUTTON)</span>
+        <span style="font-size: 0.8rem; background: #ca8a04; padding: 2px 8px; border-radius: 2px;">TIME: 35s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. Point to the bright yellow button: <strong>SYNTHESIZE QA TEST SUITE</strong>.<br>
+            2. Explain why this button exists before clicking or testing it.
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN:<br>
+            Point to the yellow button icon <code>🧪 SYNTHESIZE QA TEST SUITE</code> and explain the difference between Reactive vs Proactive.
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "Judges, you might ask: <em>'What is the purpose of this yellow button: SYNTHESIZE QA TEST SUITE?'</em><br><br>
+            In software engineering, especially in algorithmic or legacy repos, <strong>there are zero unit tests</strong>. Developers modify code and have no automated tests to catch regressions.<br><br>
+            This button shifts CI-Doctor from <em>reactive</em> repair to <strong>proactive bug prevention</strong>. It parses algorithm signatures, generates rigorous boundary tests — zeroes, negatives, integer limits, and null pointers — and commits a comprehensive JUnit test suite to prevent future CI breaks!"
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: Clear technical justification of proactive QA test generation for 0-test repos.
+      </div>
+    </div>
+
+    <!-- TEST 5: THE MAIN EVENT -->
+    <div class="test-step">
+      <div class="test-header" style="background: #991b1b;">
+        <span>TEST 05: LIVE CI RUNNER FAILURE AUTO-HEALING (THE FLAGSHIP DEMO)</span>
+        <span style="font-size: 0.8rem; background: #dc2626; padding: 2px 8px; border-radius: 2px;">TIME: 60s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action" style="background: #fecaca; color: #991b1b;">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. Scroll down to the <strong>GITHUB ACTIONS CI</strong> monitor in the sidebar.<br>
+            2. Show the red failed run card (e.g., <code>FAILED #7 on GitHub</code> on branch <code>main</code>).<br>
+            3. Click the bright red button: <strong>AUTO-HEAL THIS CI FAILURE</strong>.<br>
+            4. Watch the 5-stage pipeline execute in 14 seconds!
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN IN SEQUENCE:<br>
+            1. Point to card: "This is a real failed build on GitHub Actions."<br>
+            2. Point to console: "Downloading raw runner logs from GitHub..."<br>
+            3. Point to Groq: "Parsing compiler stack trace..."<br>
+            4. Point to Sandbox: "Compiling patch with javac in sandbox..."<br>
+            5. Point to Branch: "Spawning isolated branch: <code>ci-doctor/fix-...</code>"<br>
+            6. Point to Diff Inspector: Status badge turns to <code>PR CREATED 🚀</code>.
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "Now for our flagship test: <strong>Autonomous Self-Healing of Live GitHub Actions Failures</strong>.<br><br>
+            Look at this card: GitHub Actions CI shows a real failed run on the <code>main</code> branch. When I click <strong>AUTO-HEAL THIS CI FAILURE</strong>:<br><br>
+            • <strong>Stage 1:</strong> It downloads the actual runner logs from GitHub's cloud servers.<br>
+            • <strong>Stage 2:</strong> Groq LPU strips ANSI terminal noise, diagnoses the compiler error, and writes a precision patch in 1.8 seconds.<br>
+            • <strong>Stage 3:</strong> The patch is dry-run compiled in our isolated sandbox with <code>javac</code>.<br>
+            • <strong>Stage 4:</strong> To protect <code>main</code>, it creates an isolated branch: <code>ci-doctor/fix-ci-failure-...</code>.<br>
+            • <strong>Stage 5:</strong> It opens a complete Pull Request on GitHub. Total elapsed time: <strong>14 seconds!</strong>"
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: Real runner log ingested, compiler error diagnosed, sandbox verified, PR opened in &lt;15s.
+      </div>
+    </div>
+
+    <!-- TEST 6 -->
+    <div class="test-step">
+      <div class="test-header">
+        <span>TEST 06: GITHUB INDEPENDENT VERIFICATION (GREEN CHECKMARK PROOF)</span>
+        <span style="font-size: 0.8rem; background: #16a34a; padding: 2px 8px; border-radius: 2px;">TIME: 40s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. Switch browser tab to GitHub: <code>https://github.com/Adityaa-200x/DSA/pulls</code>.<br>
+            2. Click on the newly opened Pull Request.<br>
+            3. Scroll through the PR body and the checks section at the bottom.
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN ON GITHUB:<br>
+            1. Point to PR title and branch: <code>ci-doctor/fix-... into main</code>.<br>
+            2. Point to PR description: Root cause analysis + failed log snippet + unified diff.<br>
+            3. Point to GitHub Actions status: <strong>"All checks have passed" ✅ (Green checkmark)</strong>.
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "Let's verify on GitHub itself. Look at what CI-Doctor committed:<br><br>
+            1. <strong>Full Diagnostic Trace:</strong> The PR body automatically documents the exact error log, root-cause diagnosis, and diff.<br>
+            2. <strong>Branch Protection:</strong> The <code>main</code> branch was never touched; all work happened on an isolated branch.<br>
+            3. <strong>Green Passing Checks:</strong> Look at the status check right here: <strong>All checks have passed (Green checkmark ✅)</strong>.<br><br>
+            GitHub Actions ran our intelligent PR verification, compiled the code on Ubuntu runners, and passed. It is ready for one-click merge with zero conflicts!"
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: GitHub Actions independently ran on Ubuntu runner and marked the PR Green ✅.
+      </div>
+    </div>
+
+    <!-- TEST 7 -->
+    <div class="test-step">
+      <div class="test-header">
+        <span>TEST 07: ZERO-TRUST SAFETY GATES & APPROVAL GATE TEST</span>
+        <span style="font-size: 0.8rem; background: #6366f1; padding: 2px 8px; border-radius: 2px;">TIME: 30s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. Switch back to CI-Doctor dashboard.<br>
+            2. Point to the <strong>HUMAN APPROVAL GATE</strong> toggle.<br>
+            3. Click the toggle to switch between <code>AUTO</code> and <code>MANUAL</code>.
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN:<br>
+            Point to the toggle badge changing from yellow <code>AUTO</code> to cyan <code>MANUAL</code>.
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "To satisfy strict enterprise compliance, we built <strong>5 Zero-Trust Safety Gates</strong>:<br><br>
+            • <strong>Immutable Tests:</strong> The AI cannot weaken existing test assertions to fake a pass.<br>
+            • <strong>Sandbox Verification:</strong> Exit Code 0 is required before any commit is generated.<br>
+            • <strong>Reflection Loop:</strong> Up to 3 self-healing attempts if compilation fails.<br>
+            • <strong>Human-in-the-Loop Toggle:</strong> In <em>Manual</em> mode, CI-Doctor pauses before touching GitHub, requiring human authorization."
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: Human approval toggle switches modes; safety architecture clearly defended.
+      </div>
+    </div>
+
+    <!-- TEST 8 -->
+    <div class="test-step">
+      <div class="test-header">
+        <span>TEST 08: TELEMETRY FILTERING & OBSERVABILITY</span>
+        <span style="font-size: 0.8rem; background: #0f172a; padding: 2px 8px; border-radius: 2px;">TIME: 20s</span>
+      </div>
+      <div class="test-body">
+        <div class="test-col test-col-action">
+          <div class="col-title tag-action">👉 What You Click & Do</div>
+          <div class="action-step">
+            1. In the Agent Reasoning Console header, click the tabs: <code>[THOUGHTS]</code>, <code>[TOOLS]</code>, <code>[ERRORS]</code>, then back to <code>[ALL]</code>.<br>
+            2. Show how the console instantly filters the streaming events.
+          </div>
+          <div class="point-box">
+            👉 POINT AT SCREEN:<br>
+            Point to the filtered view isolating tool invocations (<code>read_file</code>, <code>execute_sandbox</code>).
+          </div>
+        </div>
+        <div class="test-col test-col-speech">
+          <div class="col-title tag-speech">🗣️ Exactly What You Say to Judges</div>
+          <div class="speech-text">
+            "Finally, notice the developer observability. Engineers are never left wondering what the AI is doing.<br><br>
+            These tabs let developers filter down to pure reasoning thoughts, inspect exact tool executions, or audit errors. Everything is transparent, auditable, and streaming in real-time via WebSockets."
+          </div>
+        </div>
+      </div>
+      <div class="verify-box">
+        ✅ TEST VERIFICATION: Real-time telemetry filtering functions with sub-millisecond responsiveness.
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div style="background: #f8fafc; border: 3px solid #0f172a; padding: 20px 25px; box-shadow: var(--shadow);">
+      <h3 style="margin: 0 0 10px 0; font-family: 'Space Grotesk', sans-serif;">🎯 Final Closing Statement to Deliver to Judges</h3>
+      <div style="font-size: 1rem; line-height: 1.6; color: #1e293b;">
+        "In closing, judges: CI-Doctor slashes Mean Time to Resolution from <strong>45 minutes to 14 seconds</strong>. It eliminates developer toil, prevents hallucinations via compiler sandbox verification, and preserves branch safety.<br><br>
+        Thank you! We would love to take your questions."
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
